@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StorageDefender · SDi Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SD DASHBOARD — light theme
+   ============================================================ */
+:root {
+  --sd-red:#d32f2f; --sd-red-dark:#b71c1c;
+  --sd-navy:#1a3c7c; --sd-navy-dark:#0f2247;
+  --bg:#ffffff; --bg-side:#fafafa; --bg-card:#fff;
+  --bg-elev:#f5f5f5;
+  --border:#e4e4e7; --border-strong:#d4d4d8;
+  --text:#1f2937; --text-dim:#6b7280; --text-mute:#9ca3af;
+  --blue:#1976d2; --green:#43a047; --red:#e53935;
+  --grey:#9e9e9e; --amber:#f59e0b;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{background:var(--bg);color:var(--text);font-family:'Roboto',system-ui,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ---- TOP BAR ---- */
+.topbar{height:56px;padding:0 24px 0 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#fff;position:sticky;top:0;z-index:50;}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:22px;}
+.shield{width:36px;height:32px;background:var(--sd-red);clip-path:polygon(50% 0%,100% 22%,90% 80%,50% 100%,10% 80%,0% 22%);position:relative;}
+.shield::after{content:"";position:absolute;inset:4px;background:var(--sd-red-dark);clip-path:polygon(50% 8%,92% 28%,85% 78%,50% 95%,15% 78%,8% 28%);}
+.shield::before{content:"";position:absolute;left:50%;top:50%;width:14px;height:2px;background:#fff;transform:translate(-50%,-50%) rotate(-25deg);z-index:2;box-shadow:0 4px 0 #fff;}
+.word-s{color:var(--sd-red)}.word-d{color:var(--sd-navy)}
+.top-right{display:flex;align-items:center;gap:14px;color:var(--text-dim);font-size:13.5px;}
+.cf-btn{display:flex;align-items:center;gap:8px;border:1px solid var(--border-strong);background:#fff;color:var(--text);padding:6px 12px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;text-transform:uppercase;}
+.top-icons{display:flex;gap:4px;}
+.tib{width:32px;height:32px;border-radius:4px;border:0;background:transparent;color:var(--text-dim);cursor:pointer;display:grid;place-items:center;}
+.tib:hover{background:var(--bg-elev);}
+
+/* ---- LAYOUT ---- */
+.app-body{display:flex;min-height:calc(100vh - 56px);}
+.sidebar{width:220px;background:var(--bg-side);border-right:1px solid var(--border);padding:16px 0;font-size:14px;flex-shrink:0;}
+.sidebar-head{padding:6px 16px 14px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+.sidebar-head .label{font-weight:700;font-size:13px;}
+.sidebar-head .sub{font-size:11.5px;color:var(--text-dim);line-height:1.4;margin-top:2px;}
+.sidebar nav{display:flex;flex-direction:column;}
+.sidebar a{display:flex;align-items:center;gap:12px;padding:10px 16px;color:var(--text);text-decoration:none;}
+.sidebar a:hover{background:#ececec}
+.sidebar a.active{background:#e8eef7;color:var(--sd-navy);font-weight:500;border-left:3px solid var(--sd-navy);padding-left:13px;}
+.sidebar a svg{width:16px;height:16px;opacity:.7;flex-shrink:0}
+.sdiv{height:1px;background:var(--border);margin:8px 0}
+.main{flex:1;padding:20px 28px 520px;overflow-x:hidden;}
+.page-head{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.page-head h1{font-weight:400;font-size:22px;}
+
+/* ---- KPI CARDS ---- */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
+.kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+.kpi-top{padding:16px 20px 14px;display:flex;align-items:center;justify-content:space-between;min-height:110px;}
+.kpi-info .num{font-size:36px;font-weight:400;line-height:1;}
+.kpi-info .label{font-size:14px;margin-top:8px;}
+.kpi-icon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;flex-shrink:0;}
+.kpi-icon.blue{background:var(--blue)}.kpi-icon.green{background:var(--green)}.kpi-icon.red{background:var(--red)}.kpi-icon.grey{background:var(--grey)}
+.kpi-cta{padding:10px 16px;color:#fff;font-size:12px;font-weight:600;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.kpi-cta.blue{background:var(--blue)}.kpi-cta.green{background:var(--green)}.kpi-cta.red{background:var(--red)}.kpi-cta.grey{background:var(--grey)}
+.kpi-cta:hover{filter:brightness(.95)}
+
+/* ---- PANELS ---- */
+.bottom-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:440px;}
+.panel-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;}
+.panel-head svg{width:16px;height:16px;color:var(--text-dim)}
+.panel-body{flex:1;padding:14px;overflow-y:auto;}
+.demo-banner{background:var(--sd-navy);color:#fff;padding:10px 14px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;}
+.demo-fields{padding:8px 14px}
+.demo-field{border-bottom:1px solid var(--border-strong);padding:16px 0 6px;position:relative;}
+.demo-field label{position:absolute;top:16px;left:0;font-size:12px;color:var(--text-mute);pointer-events:none;}
+.demo-field input{width:100%;border:0;outline:0;background:transparent;font-size:14px;padding:4px 0;}
+.demo-actions{padding:12px 14px;display:flex;gap:8px;border-top:1px solid var(--border);margin-top:auto;}
+.btn-flat{background:transparent;border:0;color:var(--sd-navy);padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;text-transform:uppercase;border-radius:4px;}
+.btn-flat.dis{color:var(--text-mute);cursor:not-allowed}
+.activity-row{display:flex;align-items:flex-start;gap:12px;padding:8px 6px;border-bottom:1px solid var(--border);}
+.activity-row:last-child{border-bottom:0}
+.act-icon{width:30px;height:30px;border-radius:50%;background:var(--bg-elev);display:grid;place-items:center;flex-shrink:0}
+.act-icon svg{width:16px;height:16px;color:var(--text-dim)}
+.act-text{flex:1;font-size:13px;line-height:1.4}
+.act-text .title{font-weight:500}
+.act-text .meta{color:var(--text-dim);font-size:12.5px}
+.act-text .meta strong{color:var(--text);font-weight:500}
+.act-badge{width:22px;height:22px;border-radius:4px;background:var(--bg-elev);display:grid;place-items:center;color:var(--text-dim);font-size:11px;flex-shrink:0}
+.act-badge.ok{background:#c8e6c9;color:var(--green)}
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:40px 12px;color:var(--text-dim);font-size:13px;text-align:center}
+.empty-state svg{width:28px;height:28px;opacity:.5}
+.day-toggle{padding:8px 14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:4px}
+.day-pill{padding:4px 10px;font-size:11.5px;font-weight:600;background:transparent;border:0;cursor:pointer;color:var(--text-dim);border-radius:3px}
+.day-pill.active{background:var(--bg-elev);color:var(--text)}
+.footer{border-top:1px solid var(--border);padding:14px;text-align:center;background:var(--bg-elev);color:var(--text-dim);font-size:12px;margin-top:32px}
+
+/* ============================================================
+   TOP-RIGHT PILL STACK
+   ============================================================ */
+.top-pills{position:fixed;top:70px;right:20px;z-index:1100;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.top-pills>*{pointer-events:auto}
+.money-counter{display:none}
+.money-counter.bump{transform:scale(1.08)}
+.mc-label{font-size:10px;opacity:.7;letter-spacing:.06em}
+.mc-val{font-family:'Fraunces',serif;font-size:17px;font-weight:500}
+.mc-icon{width:22px;height:22px;border-radius:50%;background:#ff5a1f;color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px}
+.voice-pip{display:none!important}
+.wake-indicator{background:rgba(255,255,255,.96);border:1px solid var(--border-strong);border-radius:100px;padding:5px 12px 5px 8px;display:flex;align-items:center;gap:7px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-dim);box-shadow:0 4px 16px rgba(0,0,0,.06);max-width:280px}
+.v-dot,.wake-indicator .dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1;flex-shrink:0}
+.voice-pip.eleven .v-dot{background:#10b981}.voice-pip.eleven{color:#047857}
+.voice-pip.browser .v-dot{background:#f59e0b}.voice-pip.browser{color:#b45309}
+.voice-pip.error .v-dot{background:#ef4444}.voice-pip.error{color:#b91c1c}
+.voice-pip.speaking .v-dot{animation:pulse .6s infinite}
+.wake-indicator.armed .dot{background:var(--green);animation:pulse 2s infinite}
+.wake-indicator.heard{background:var(--sd-navy);color:#fff;border-color:var(--sd-navy)}
+.wake-indicator.heard .dot{background:var(--amber)}
+.wake-indicator button{background:transparent;border:0;cursor:pointer;color:inherit;font-family:inherit;font-size:11px;padding:0 4px;opacity:.8}
+
+/* ============================================================
+   FEEDBACK BUTTON — bottom left, always visible
+   ============================================================ */
+.feedback-launcher{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1000;background:#fff;border:1px solid var(--border-strong);border-radius:100px;padding:10px 16px 10px 12px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 8px 20px -6px rgba(0,0,0,.18);color:var(--text);transition:transform .15s}
+.feedback-launcher:hover{transform:translateX(-50%) translateY(-2px)}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.5s infinite}
+
+/* ============================================================
+   SCENARIO CAROUSEL — circular arc orbit around character
+   ============================================================ */
+.carousel-orbit{
+  position:fixed; left:110px; bottom:240px;
+  width:0; height:0;
+  z-index:950;
+  pointer-events:none;
+}
+.carousel-card{
+  position:absolute;
+  width:158px;
+  background:#fff;
+  border:1.5px solid var(--border);
+  border-radius:20px;
+  padding:13px 13px 11px;
+  cursor:pointer;
+  transition:transform .48s cubic-bezier(.34,1.1,.64,1), opacity .38s, box-shadow .2s;
+  box-shadow:0 6px 20px -6px rgba(0,0,0,.13);
+  display:flex; flex-direction:column; gap:5px;
+  overflow:hidden;
+  pointer-events:auto;
+}
+.carousel-card::before{
+  content:""; position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius:20px 20px 0 0;
+}
+.carousel-card.urgent::before{background:linear-gradient(90deg,#ef4444,#f97316)}
+.carousel-card.configure::before{background:linear-gradient(90deg,var(--sd-navy),#3b82f6)}
+.carousel-card.revenue::before{background:linear-gradient(90deg,var(--green),#84cc16)}
+.carousel-card.world::before{background:linear-gradient(90deg,#7c3aed,#ec4899)}
+.carousel-card:hover{box-shadow:0 14px 28px -8px rgba(0,0,0,.22);border-color:var(--sd-navy)}
+.carousel-card.active-card{border-color:var(--sd-navy);box-shadow:0 0 0 3px rgba(26,60,124,.18),0 14px 28px -8px rgba(0,0,0,.22)}
+.card-icon{font-size:20px;line-height:1}
+.card-cat{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.carousel-card.urgent .card-cat{color:#ef4444}
+.carousel-card.configure .card-cat{color:var(--sd-navy)}
+.carousel-card.revenue .card-cat{color:var(--green)}
+.carousel-card.world .card-cat{color:#7c3aed}
+.card-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.3}
+.card-sub{font-size:11px;color:var(--text-dim);line-height:1.35;flex:1}
+.card-cta{margin-top:5px;padding:5px 0;font-size:11.5px;font-weight:700;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;gap:4px;letter-spacing:.02em}
+.carousel-card.urgent .card-cta{color:#ef4444}
+.carousel-card.configure .card-cta{color:var(--sd-navy)}
+.carousel-card.revenue .card-cta{color:var(--green)}
+.carousel-card.world .card-cta{color:#7c3aed}
+
+/* Arc nav buttons — float at arc tips */
+.carousel-btn{position:fixed;width:44px;height:44px;border-radius:50%;background:#fff;border:1.5px solid var(--border-strong);box-shadow:0 6px 16px rgba(0,0,0,.14);cursor:pointer;display:grid;place-items:center;color:var(--text);font-size:18px;transition:all .15s;z-index:960;pointer-events:auto}
+.carousel-btn:hover{background:var(--sd-navy);color:#fff;border-color:var(--sd-navy)}
+.carousel-btn.prev{bottom:395px;left:150px}
+.carousel-btn.next{bottom:82px;left:150px}
+
+/* ============================================================
+   SDi FEMALE CHARACTER STAGE
+   ============================================================ */
+.sdi-stage{
+  position:fixed; bottom:0; left:0;
+  width:280px; height:280px;
+  z-index:900; pointer-events:none;
+}
+
+/* Character container */
+.char-wrap{
+  position:absolute; bottom:0; left:20px;
+  width:180px; height:270px;
+  pointer-events:auto; cursor:pointer;
+  filter:drop-shadow(0 8px 20px rgba(0,0,0,.25));
+}
+.char-wrap svg{width:100%;height:100%;overflow:visible}
+
+/* Floor shadow */
+.char-wrap::after{
+  content:""; position:absolute; bottom:4px; left:50%;
+  width:120px; height:10px;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.22),transparent 70%);
+  transform:translateX(-50%);
+  filter:blur(3px);
+  pointer-events:none;
+}
+
+/* ---- Mood glow ring behind character ---- */
+.mood-ring{
+  position:absolute; bottom:20px; left:10px;
+  width:160px; height:200px;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(255,90,31,.18),transparent 70%);
+  transition:background 1s;
+  pointer-events:none;
+  animation:moodGlow 3s ease-in-out infinite;
+}
+.sdi-stage.mood-sad .mood-ring{background:radial-gradient(ellipse at center,rgba(95,212,229,.22),transparent 70%)}
+.sdi-stage.mood-thinking .mood-ring{background:radial-gradient(ellipse at center,rgba(95,212,229,.16),transparent 70%)}
+.sdi-stage.mood-happy .mood-ring{background:radial-gradient(ellipse at center,rgba(255,90,31,.22),transparent 70%)}
+.sdi-stage.mood-speaking .mood-ring{background:radial-gradient(ellipse at center,rgba(255,193,77,.28),transparent 70%);animation:moodGlow .5s ease-in-out infinite}
+.sdi-stage.mood-listening .mood-ring{background:radial-gradient(ellipse at center,rgba(95,212,229,.3),transparent 70%);animation:moodGlow .7s ease-in-out infinite}
+@keyframes moodGlow{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.06);opacity:1}}
+
+/* Floating particles around character */
+.char-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.particle{position:absolute;width:4px;height:4px;border-radius:50%;background:#ff5a1f;opacity:0;animation:particleFloat 4s ease-in-out infinite}
+.sdi-stage.mood-happy .particle{animation:particleFloat 2s ease-in-out infinite}
+.sdi-stage.mood-sad .particle{background:#5fd4e5}
+@keyframes particleFloat{0%{opacity:0;transform:translateY(0) scale(0)}30%{opacity:.8;transform:translateY(-30px) scale(1)}100%{opacity:0;transform:translateY(-80px) scale(.5)}}
+
+/* ---- Character SVG animations ---- */
+.char-body{transform-origin:center;transform-box:fill-box}
+.char-torso{transform-origin:80px 140px;transform-box:fill-box;animation:charBreathe 4s ease-in-out infinite}
+@keyframes charBreathe{0%,100%{transform:scaleY(1) translateY(0)}50%{transform:scaleY(1.016) translateY(-1.5px)}}
+
+.char-head{transform-origin:80px 55px;transform-box:fill-box;animation:charHeadSway 7s ease-in-out infinite}
+@keyframes charHeadSway{0%,100%{transform:rotate(0deg)}30%{transform:rotate(1.8deg)}70%{transform:rotate(-1.5deg)}}
+
+.char-eye{transform-origin:center;transform-box:fill-box;animation:charBlink 5.5s infinite,charEyeLook 9s ease-in-out infinite}
+.char-eye.r{animation-delay:.06s,.3s}
+@keyframes charBlink{0%,88%,95%,100%{transform:scaleY(1)}91%,92%{transform:scaleY(.08)}}
+@keyframes charEyeLook{0%,100%{transform:translateX(0)}20%{transform:translateX(-1.5px)}40%{transform:translateX(0)}65%{transform:translateX(1.2px)}80%{transform:translateX(0)}}
+
+.char-arm-left{transform-origin:44px 98px;transform-box:fill-box}
+.char-arm-right{transform-origin:116px 98px;transform-box:fill-box}
+.char-leg-left{transform-origin:68px 188px;transform-box:fill-box}
+.char-leg-right{transform-origin:92px 188px;transform-box:fill-box}
+.char-brow{transition:transform .4s,stroke .4s}
+
+/* Mood CSS states */
+.char-mouth-smile{opacity:1;transition:opacity .35s}
+.char-mouth-neutral{opacity:0;transition:opacity .35s}
+.char-mouth-frown{opacity:0;transition:opacity .35s}
+.sdi-stage.mood-sad .char-mouth-smile{opacity:0}
+.sdi-stage.mood-sad .char-mouth-frown{opacity:1}
+.sdi-stage.mood-thinking .char-mouth-smile{opacity:0}
+.sdi-stage.mood-thinking .char-mouth-neutral{opacity:1}
+.sdi-stage.mood-sad .char-brow-l{transform:translateY(-2px) rotate(-10deg);transform-origin:right center;transform-box:fill-box}
+.sdi-stage.mood-sad .char-brow-r{transform:translateY(-2px) rotate(10deg);transform-origin:left center;transform-box:fill-box}
+
+/* Talking - head bob */
+.sdi-stage.mood-speaking .char-head{animation:charTalkBob .32s ease-in-out infinite}
+@keyframes charTalkBob{0%,100%{transform:rotate(0)}50%{transform:rotate(1.8deg) translateY(-1px)}}
+
+/* Happy bounce */
+.sdi-stage.mood-happy .char-body{animation:charHappyBounce 0s}/* trigger via JS class dance */
+.sdi-stage.dancing .char-body{animation:charDance .65s ease-in-out infinite}
+@keyframes charDance{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+
+/* Waving */
+.sdi-stage.waving .char-arm-right{animation:charWave 1.3s ease-in-out}
+@keyframes charWave{0%{transform:rotate(0)}20%{transform:rotate(-120deg)}50%{transform:rotate(-100deg)}75%{transform:rotate(-120deg)}100%{transform:rotate(0)}}
+
+/* Walking */
+.sdi-stage.walking .char-leg-left{animation:charLegL .5s ease-in-out infinite}
+.sdi-stage.walking .char-leg-right{animation:charLegR .5s ease-in-out infinite}
+.sdi-stage.walking .char-arm-left{animation:charArmL .5s ease-in-out infinite}
+.sdi-stage.walking .char-arm-right{animation:charArmR .5s ease-in-out infinite}
+.sdi-stage.walking.mood-sad .char-leg-left{animation-duration:1.4s}
+.sdi-stage.walking.mood-sad .char-leg-right{animation-duration:1.4s}
+.sdi-stage.walking.mood-sad .char-head{transform:translateY(4px) rotate(6deg)}
+.sdi-stage.walking.mood-sad .char-torso{transform:rotate(3deg) translateY(3px)}
+@keyframes charLegL{0%,100%{transform:rotate(-22deg)}50%{transform:rotate(18deg)}}
+@keyframes charLegR{0%,100%{transform:rotate(18deg)}50%{transform:rotate(-22deg)}}
+@keyframes charArmL{0%,100%{transform:rotate(16deg)}50%{transform:rotate(-22deg)}}
+@keyframes charArmR{0%,100%{transform:rotate(-22deg)}50%{transform:rotate(16deg)}}
+
+/* Character moves across bottom */
+.char-wrap{transition:left 5s linear}
+.char-wrap.walk-happy{transition:left 4s linear}
+.char-wrap.walk-sad{transition:left 8s linear}
+
+/* Talk-to-SDi button — under her legs (left side) */
+.sdi-talk-btn{
+  position:fixed; bottom:8px; left:20px;
+  z-index:1000;
+  background:var(--sd-navy); color:#fff;
+  border:0; border-radius:100px;
+  padding:9px 18px 9px 14px;
+  display:flex; align-items:center; gap:8px;
+  font-size:13px; font-weight:600;
+  cursor:pointer;
+  box-shadow:0 8px 20px -6px rgba(26,60,124,.6);
+  transition:background .2s,transform .15s;
+}
+.sdi-talk-btn:hover{background:#122c5c;transform:translateY(-2px)}
+.sdi-talk-btn.listening{background:var(--blue);animation:micPulse 1.2s infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 8px 20px -6px rgba(25,118,210,.6)}50%{box-shadow:0 8px 20px -6px rgba(25,118,210,.6),0 0 0 8px rgba(25,118,210,.12)}}
+
+/* Reopen last message pill */
+.sdi-reopen{
+  position:fixed; bottom:8px; left:200px;
+  z-index:1000;
+  background:#fff;
+  border:1px solid var(--border-strong);
+  border-radius:100px;
+  padding:9px 14px 9px 12px;
+  display:flex; align-items:center; gap:7px;
+  font-size:12.5px; font-weight:500;
+  cursor:pointer;
+  box-shadow:0 8px 20px -6px rgba(0,0,0,.16);
+  color:var(--text);
+  transition:transform .15s,opacity .3s;
+  opacity:0; pointer-events:none;
+}
+.sdi-reopen.visible{opacity:1;pointer-events:auto}
+.sdi-reopen:hover{transform:translateY(-2px)}
+
+/* ============================================================
+   RESPONSE PANEL — slides in from right, doesn't block page
+   ============================================================ */
+.response-panel{
+  position:fixed; right:0; top:56px;
+  width:420px; height:calc(100vh - 56px);
+  background:#fffcf7;
+  border-left:1px solid #e5d8b8;
+  box-shadow:-20px 0 60px -20px rgba(0,0,0,.20);
+  z-index:1600;
+  display:flex; flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .5s cubic-bezier(.34,1.2,.5,1);
+  overflow:hidden;
+}
+.response-panel.open{transform:translateX(0)}
+
+/* Paper texture on response panel */
+.response-panel::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(transparent,transparent 27px,rgba(180,150,90,.05) 28px),
+  radial-gradient(circle at 0% 0%,rgba(255,200,100,.04),transparent 50%);
+  z-index:0}
+
+.rp-head{
+  padding:14px 18px 12px;
+  border-bottom:1px solid #e5d8b8;
+  display:flex; align-items:center; justify-content:space-between;
+  background:linear-gradient(180deg,#fffaf0,#fff);
+  position:relative; z-index:1;
+  flex-shrink:0;
+}
+.rp-head-left{display:flex;align-items:center;gap:10px}
+.rp-wax{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f04b4b,#b71c1c 70%);display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:700;font-size:11px;color:#fff7e0;flex-shrink:0}
+.rp-wax::before{content:"SD"}
+.rp-from{font-family:'Fraunces',serif;font-style:italic;font-size:16px;color:#8a3a2a}
+.rp-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:#a16207}
+.rp-close{width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.05);border:1px solid rgba(180,140,60,.3);cursor:pointer;display:grid;place-items:center;color:#8a6a2a;transition:all .15s;flex-shrink:0}
+.rp-close:hover{background:rgba(0,0,0,.10);color:#2c2416}
+
+.rp-body{
+  flex:1; overflow-y:auto;
+  padding:20px 20px 10px;
+  position:relative; z-index:1;
+  scroll-behavior:smooth;
+}
+.rp-body::-webkit-scrollbar{width:5px}
+.rp-body::-webkit-scrollbar-thumb{background:rgba(180,140,60,.3);border-radius:3px}
+
+.rp-text{
+  font-family:'Fraunces',serif; font-size:17px; line-height:1.72;
+  color:#2c2416; margin-bottom:14px;
+}
+.rp-text::after{content:"▍";animation:inkBlink .7s infinite;margin-left:2px;color:#8a3a2a}
+.rp-text.done::after{content:""}
+@keyframes inkBlink{0%,60%{opacity:1}61%,100%{opacity:0}}
+
+.rp-card{
+  margin:0 0 14px;
+  padding:14px 16px;
+  background:rgba(245,158,11,.10);
+  border-left:3px solid #b45309;
+  border-radius:6px;
+  font-family:'Roboto',sans-serif;
+  opacity:0; transform:translateY(10px);
+  transition:opacity .5s,transform .5s;
+}
+.rp-card.show{opacity:1;transform:translateY(0)}
+.rp-card .tag{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#b45309;margin-bottom:5px}
+.rp-card .title{font-weight:600;font-size:15px;margin-bottom:4px}
+.rp-card .body{font-size:13.5px;color:#5a4a2a;line-height:1.55}
+.rp-card .cta{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.rp-card .cta button{padding:8px 14px;border-radius:6px;font-size:12.5px;font-weight:600;background:var(--sd-navy);color:#fff;border:0;cursor:pointer;font-family:'Roboto',sans-serif;transition:filter .15s}
+.rp-card .cta button:hover{filter:brightness(1.1)}
+.rp-card .cta button.ghost{background:transparent;border:1px solid #c9b378;color:#8a6a2a}
+
+.rp-sig{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--sd-navy);text-align:right;margin-bottom:14px;opacity:0;transition:opacity .6s}
+.rp-sig.show{opacity:1}
+.rp-sig::before{content:"— "}
+
+/* Chat section inside panel */
+.rp-chat{
+  border-top:1px solid #e5d8b8;
+  padding:12px 16px 14px;
+  background:rgba(255,250,240,.8);
+  position:relative; z-index:1;
+  flex-shrink:0;
+}
+.chat-messages{
+  max-height:140px; overflow-y:auto;
+  margin-bottom:8px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:rgba(180,140,60,.25);border-radius:2px}
+.chat-msg{padding:7px 12px;border-radius:12px;font-size:13.5px;line-height:1.4;max-width:88%;animation:msgIn .3s ease-out}
+@keyframes msgIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.from-sdi{background:#fff;border:1px solid #e5d8b8;font-family:'Fraunces',serif;color:#2c2416;border-top-left-radius:3px}
+.chat-msg.from-user{background:var(--sd-navy);color:#fff;align-self:flex-end;border-top-right-radius:3px}
+.chat-row{display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;background:#fff;border:1px solid var(--border-strong);border-radius:10px;padding:8px 10px;font-size:14px;font-family:'Roboto',sans-serif;outline:0;resize:none;line-height:1.35;height:36px;transition:border-color .2s}
+.chat-input:focus{border-color:var(--sd-navy);box-shadow:0 0 0 2px rgba(26,60,124,.08)}
+.chat-send{width:36px;height:36px;border-radius:10px;background:var(--sd-navy);color:#fff;border:0;cursor:pointer;display:grid;place-items:center;transition:background .15s;flex-shrink:0}
+.chat-send:hover{background:#122c5c}
+.chat-mic{width:36px;height:36px;border-radius:10px;background:transparent;border:1px solid var(--border-strong);color:var(--text-dim);cursor:pointer;display:grid;place-items:center;transition:all .15s;flex-shrink:0}
+.chat-mic:hover{background:var(--bg-elev);color:var(--text)}
+.chat-mic.listening{color:var(--blue);border-color:var(--blue);background:rgba(25,118,210,.08);animation:micPulse 1.2s infinite}
+
+/* ============================================================
+   LETTER FLY ANIMATION (small indicator when panel opens)
+   ============================================================ */
+.letter-throw{
+  position:fixed; z-index:1700;
+  pointer-events:none;
+  font-size:24px; line-height:1;
+  transition:all .7s cubic-bezier(.34,1.3,.5,1);
+  opacity:0;
+}
+.letter-throw.active{opacity:1}
+.letter-throw.fly{transition:all .55s cubic-bezier(.6,0,.4,1)}
+
+/* ============================================================
+   FEEDBACK MODAL
+   ============================================================ */
+.feedback-modal{position:fixed;inset:0;z-index:2200;background:rgba(15,20,30,.55);backdrop-filter:blur(8px);display:grid;place-items:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .3s}
+.feedback-modal.open{opacity:1;pointer-events:auto}
+.feedback-card{background:#fff;border-radius:16px;max-width:500px;width:100%;padding:28px;box-shadow:0 30px 80px -20px rgba(0,0,0,.4);transform:scale(.94);transition:transform .3s}
+.feedback-modal.open .feedback-card{transform:scale(1)}
+.feedback-card h3{font-family:'Fraunces',serif;font-weight:500;font-size:22px;margin-bottom:6px}
+.feedback-card .sub{color:var(--text-dim);font-size:13.5px;line-height:1.55;margin-bottom:18px}
+.fb-mode-toggle{display:flex;gap:6px;margin-bottom:16px;background:var(--bg-elev);padding:4px;border-radius:10px}
+.fb-mode-toggle button{flex:1;padding:8px;border:0;background:transparent;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-dim);display:flex;align-items:center;justify-content:center;gap:6px}
+.fb-mode-toggle button.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fb-preview{width:100%;height:200px;background:#0a1628;border-radius:10px;display:grid;place-items:center;color:#5d6f8c;font-size:13px;overflow:hidden;position:relative}
+.fb-preview video{width:100%;height:100%;object-fit:cover}
+.fb-preview .rec-pip{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.5);padding:4px 10px;border-radius:100px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#fff}
+.red-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;animation:pulse 1s infinite}
+.audio-bars{display:flex;align-items:center;gap:4px;height:60px}
+.bar{width:5px;background:#5fd4e5;border-radius:2px;animation:barWave .8s ease-in-out infinite}
+@keyframes barWave{0%,100%{height:8px}50%{height:38px}}
+.fb-actions{margin-top:16px;display:flex;gap:8px;justify-content:flex-end}
+.fb-actions button{padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Roboto',sans-serif}
+.fb-primary{background:var(--sd-navy);color:#fff;border:0}
+.fb-ghost{background:transparent;border:1px solid var(--border-strong);color:var(--text-dim)}
+.fb-danger{background:#ef4444;color:#fff;border:0}
+
+/* ============================================================
+   INTRO
+   ============================================================ */
+.intro-overlay{position:fixed;inset:0;z-index:5000;background:radial-gradient(circle at center,#fff 0%,#f4f6fb 100%);display:grid;place-items:center;transition:opacity .7s}
+.intro-overlay.gone{opacity:0;pointer-events:none}
+.intro-card{text-align:center;padding:40px;max-width:520px}
+.intro-preview{width:140px;height:175px;margin:0 auto 18px;filter:drop-shadow(0 12px 40px rgba(0,0,0,.18))}
+.intro-preview svg{width:100%;height:100%}
+.intro-card h1{font-family:'Fraunces',serif;font-weight:500;font-size:40px;letter-spacing:-.02em;margin-bottom:8px}
+.intro-card h1 em{color:var(--sd-red);font-style:italic;font-weight:400}
+.intro-card p{color:var(--text-dim);font-size:15px;margin-bottom:24px;line-height:1.6}
+.intro-btn{background:var(--sd-navy);color:#fff;border:0;padding:13px 26px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 10px 30px -8px rgba(26,60,124,.45);transition:all .2s}
+.intro-btn:hover{transform:translateY(-2px)}
+.intro-stamp{margin-top:18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mute);letter-spacing:.1em;text-transform:uppercase}
+
+@media (max-width:1100px){.sidebar{display:none}.kpi-row,.bottom-row{grid-template-columns:repeat(2,1fr)}.carousel-wrap{left:10px}}
+@media (max-width:700px){.kpi-row,.bottom-row{grid-template-columns:1fr}.response-panel{width:100%}.carousel-wrap{left:0;right:0;padding:0 36px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.05ms !important}}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div class="intro-overlay" id="introOverlay">
+  <div class="intro-card">
+    <div class="intro-preview" id="introPreview"></div>
+    <h1>Meet <em>SDi</em></h1>
+    <p>Your StorageDefender Intelligence — always watching, always ready. Before you start your day, she has a few things to go over with you.</p>
+    <button class="intro-btn" onclick="dismissIntro()">Enter the Dashboard →</button>
+    <div class="intro-stamp">SD Innovation Tank · Pitch Day · May 27 2026</div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand"><div class="shield"></div><span><span class="word-s">Storage</span><span class="word-d">Defender</span></span></div>
+  <div class="top-right">
+    <span>West Coast Self Storage Antioch</span>
+    <button class="cf-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/></svg>Change Facility</button>
+    <div class="top-icons">
+      <button class="tib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5"/></svg></button>
+      <button class="tib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <button class="tib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9z"/></svg></button>
+      <button class="tib"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<!-- TOP-RIGHT PILLS (wake indicator only) -->
+<div style="display:none;" class="top-pills">
+  <div class="money-counter" id="moneyCounter"><div class="mc-icon">$</div><div><div class="mc-label">FOUND TODAY</div><div class="mc-val" id="moneyVal">$0</div></div></div>
+  <div class="wake-indicator" id="wakeIndicator"><span class="dot"></span><span id="wakeLabel">Wake word off</span><button id="wakeEnableBtn" onclick="enableWakeWord()">Enable</button></div>
+</div>
+
+<!-- VOICE PIP — floats at her hand -->
+<div class="voice-pip" id="voicePip"><span class="v-dot"></span><span id="voicePipLabel">Voice: idle</span></div>
+
+<!-- APP BODY -->
+<div class="app-body">
+  <aside class="sidebar">
+    <div class="sidebar-head"><div class="label">Team of Defenders</div><div class="sub">West Coast Self Storage<br>Antioch</div></div>
+    <nav>
+      <a href="#" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Smart Units</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 21a6 6 0 0 1 12 0"/></svg>Renters</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3z"/></svg>Inventory</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V7l9-4 9 4v14"/></svg>Manage Facility</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v5h5"/><path d="M5 3h9l5 5v13H5z"/></svg>Reports</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9z"/></svg>Notifications</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Audit Log</a>
+      <div class="sdiv"></div>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 5 0c0 1.5-2.5 2-2.5 4"/></svg>Help Resources</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="m4 7 8 6 8-6"/></svg>Contact Us</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <div class="page-head"><h1>West Coast Self Storage Antioch</h1><button class="cf-btn">Change Facility</button></div>
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-top"><div class="kpi-info"><div class="num">5</div><div class="label">Active Smart Units</div></div><div class="kpi-icon blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="8" r="4"/><path d="M3 21a8 8 0 0 1 16 0"/><path d="m17 11 2 2 4-4"/></svg></div></div><div class="kpi-cta blue">VIEW DETAILS <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg></div></div>
+      <div class="kpi-card"><div class="kpi-top"><div class="kpi-info"><div class="num">3</div><div class="label">Authorized Accesses</div></div><div class="kpi-icon green"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5 9-10"/></svg></div></div><div class="kpi-cta green">VIEW DETAILS <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg></div></div>
+      <div class="kpi-card"><div class="kpi-top"><div class="kpi-info"><div class="num">0</div><div class="label">Incident Resolution</div></div><div class="kpi-icon red"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 21h20z"/><path d="M12 10v5M12 18v.5"/></svg></div></div><div class="kpi-cta red">VIEW DETAILS <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div></div>
+      <div class="kpi-card"><div class="kpi-top"><div class="kpi-info"><div class="num">0</div><div class="label">Manage Unhealthy Devices</div></div><div class="kpi-icon grey"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M2 21h20"/></svg></div></div><div class="kpi-cta grey">VIEW DETAILS <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div></div>
+    </div>
+    <div class="bottom-row">
+      <div class="panel"><div class="panel-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="8" r="4"/><path d="M3 21a8 8 0 0 1 16 0"/></svg>Demo Smart Experience</div><div class="demo-banner"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>Send a Demo Message</div><div class="demo-fields"><div class="demo-field"><input placeholder=" "><label>First Name</label></div><div class="demo-field"><input placeholder=" "><label>Last Name</label></div><div class="demo-field"><input placeholder=" "><label>Primary Mobile Phone *</label></div></div><div class="demo-actions"><button class="btn-flat">DEMO MESSAGE</button><button class="btn-flat">DEMO UNIT</button><button class="btn-flat dis">ADD RENTER</button></div></div>
+      <div class="panel"><div class="panel-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9z"/></svg>Active Smart Unit Activity</div><div class="panel-body"><div id="activeList"></div></div><div class="day-toggle"><button class="day-pill">TODAY</button><button class="day-pill active">2D</button><button class="day-pill">1W</button></div></div>
+      <div class="panel"><div class="panel-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Vacant Smart Unit Activity</div><div class="panel-body"><div id="vacantList"></div></div><div class="day-toggle"><button class="day-pill">TODAY</button><button class="day-pill active">2D</button><button class="day-pill">1W</button></div></div>
+      <div class="panel"><div class="panel-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 21h20z"/></svg>Concerning Activity</div><div class="panel-body"><div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>No Recent Activity</div></div><div class="day-toggle"><button class="day-pill">TODAY</button><button class="day-pill active">2D</button><button class="day-pill">1W</button></div></div>
+    </div>
+    <div class="footer">© 2020-2026 StorageDefender Inc.</div>
+  </main>
+</div>
+
+<!-- FEEDBACK LAUNCHER -->
+<button class="feedback-launcher" onclick="openFeedback()"><span class="pulse-dot"></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>Record Feedback</button>
+
+<!-- SCENARIO CAROUSEL — arc orbit around character -->
+<div class="carousel-orbit" id="carouselOrbit">
+  <!-- Cards positioned by JS in circular arc -->
+</div>
+<button class="carousel-btn prev" onclick="carouselNav(-1)">↑</button>
+<button class="carousel-btn next" onclick="carouselNav(1)">↓</button>
+
+<!-- SDi STAGE -->
+<div class="sdi-stage" id="sdiStage">
+  <div class="mood-ring" id="moodRing"></div>
+  <div class="char-particles" id="charParticles"></div>
+  <div class="char-wrap" id="charWrap" onclick="onCharTap()"></div>
+</div>
+
+<!-- TALK + REOPEN BUTTONS -->
+<button class="sdi-talk-btn" id="sdiTalkBtn" onclick="toggleMic()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>
+  <span id="talkBtnLabel">Talk to SDi</span>
+</button>
+<button class="sdi-reopen" id="sdiReopen" onclick="reopenPanel()">
+  📨 <span id="reopenLabel">View SDi's last note</span>
+</button>
+
+<!-- RESPONSE PANEL (slides in from right) -->
+<div class="response-panel" id="responsePanel">
+  <div class="rp-head">
+    <div class="rp-head-left">
+      <div class="rp-wax"></div>
+      <div>
+        <div class="rp-from">From SDi · for Cathy</div>
+        <div class="rp-date" id="rpDate"></div>
+      </div>
+    </div>
+    <button class="rp-close" onclick="closePanel()" title="Close">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="rp-body" id="rpBody">
+    <div class="rp-text" id="rpText"></div>
+    <div class="rp-card" id="rpCard" style="display:none"></div>
+    <div class="rp-sig" id="rpSig">SDi</div>
+  </div>
+  <div class="rp-chat">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-row">
+      <button class="chat-mic" id="chatMicBtn" onclick="toggleMic()" title="Talk">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>
+      </button>
+      <textarea class="chat-input" id="chatInput" placeholder="Ask SDi anything…" rows="1" onkeydown="onChatKey(event)" oninput="autoGrow(this)"></textarea>
+      <button class="chat-send" onclick="sendChat()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK MODAL -->
+<div class="feedback-modal" id="feedbackModal" onclick="if(event.target===this)cancelFeedback()">
+  <div class="feedback-card">
+    <h3>Tell SDi what you think</h3>
+    <p class="sub">A 10-second clip helps me get sharper for you. Stays on your device until you tap <strong>Submit</strong>.</p>
+    <div class="fb-mode-toggle">
+      <button id="modeAudio" class="active" onclick="setFeedbackMode('audio')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></svg>Audio</button>
+      <button id="modeVideo" onclick="setFeedbackMode('video')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>Video</button>
+    </div>
+    <div class="fb-preview" id="fbPreview"><div style="text-align:center"><div style="margin-bottom:8px;font-size:14px;color:#94a3b8">Tap <strong style="color:#cbd5e1">Start</strong> when ready</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace">10s max · stays on device</div></div></div>
+    <div class="fb-actions" id="fbActions">
+      <button class="fb-ghost" onclick="cancelFeedback()">Cancel</button>
+      <button class="fb-primary" id="fbPrimary" onclick="startFeedback()">Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- LETTER THROW ANIMATION ELEMENT -->
+<div class="letter-throw" id="letterThrow">📨</div>
+
+<!-- CHARACTER SVG TEMPLATE -->
+<template id="charSVG">
+<svg viewBox="0 0 160 260" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+<defs>
+  <linearGradient id="skG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde8cc"/><stop offset="100%" stop-color="#f0c8a0"/></linearGradient>
+  <linearGradient id="jkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e4080"/><stop offset="100%" stop-color="#0f2247"/></linearGradient>
+  <linearGradient id="rdG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e53935"/><stop offset="100%" stop-color="#b71c1c"/></linearGradient>
+  <linearGradient id="hrG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#18090a"/><stop offset="100%" stop-color="#2c1000"/></linearGradient>
+  <linearGradient id="ptG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e2940"/><stop offset="100%" stop-color="#0e1520"/></linearGradient>
+  <radialGradient id="ckG" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ff9090" stop-opacity=".4"/><stop offset="100%" stop-color="#ff9090" stop-opacity="0"/></radialGradient>
+</defs>
+
+<g class="char-body">
+  <!-- Shadow -->
+  <ellipse cx="80" cy="256" rx="36" ry="4" fill="rgba(0,0,0,.18)"/>
+
+  <!-- LEGS -->
+  <g class="char-leg-left">
+    <path d="M58 192 Q56 196 56 202 L54 244 Q54 248 60 248 L74 248 Q78 248 78 244 L76 202 Q76 196 74 192Z" fill="url(#ptG)" stroke="#0a1020" stroke-width=".6"/>
+    <path d="M50 244 Q50 254 66 254 L76 254 Q80 254 80 248 L80 244Z" fill="#141414" stroke="#000" stroke-width=".4"/>
+    <line x1="51" y1="250" x2="80" y2="250" stroke="#2a2a2a" stroke-width=".8"/>
+  </g>
+  <g class="char-leg-right">
+    <path d="M82 192 Q82 196 84 202 L84 244 Q84 248 88 248 L102 248 Q106 248 106 244 L104 202 Q104 196 102 192Z" fill="url(#ptG)" stroke="#0a1020" stroke-width=".6"/>
+    <path d="M80 244 Q80 254 96 254 L108 254 Q112 254 112 248 L112 244Z" fill="#141414" stroke="#000" stroke-width=".4"/>
+    <line x1="80" y1="250" x2="112" y2="250" stroke="#2a2a2a" stroke-width=".8"/>
+  </g>
+
+  <!-- TORSO (jacket) -->
+  <g class="char-torso">
+    <!-- Main jacket -->
+    <path d="M40 98 Q40 94 46 92 L66 90 L80 98 L94 90 L114 92 Q120 94 120 98 L120 192 Q110 198 80 200 Q50 198 40 192Z" fill="url(#jkG)" stroke="#0a1828" stroke-width=".7"/>
+    <!-- Red shoulders -->
+    <path d="M40 98 Q40 94 46 92 L66 90 L64 108 Q50 112 40 108Z" fill="url(#rdG)"/>
+    <path d="M120 98 Q120 94 114 92 L94 90 L96 108 Q110 112 120 108Z" fill="url(#rdG)"/>
+    <!-- White shirt V -->
+    <path d="M66 90 L80 116 L94 90 L90 93 L80 113 L70 93Z" fill="#f0f4f8"/>
+    <!-- Belt -->
+    <rect x="58" y="184" width="44" height="7" rx="2" fill="#0a1020" stroke="#d32f2f" stroke-width=".7"/>
+    <rect x="75" y="182" width="10" height="11" rx="1.5" fill="#c8930a"/>
+    <rect x="78" y="185" width="4" height="5" rx=".5" fill="#0a1020"/>
+    <!-- SD badge -->
+    <rect x="50" y="120" width="24" height="13" rx="2.5" fill="#d32f2f"/>
+    <text x="62" y="129.5" text-anchor="middle" font-family="Roboto,sans-serif" font-size="8" font-weight="700" fill="#fff">SD</text>
+    <!-- Jacket buttons -->
+    <circle cx="80" cy="132" r="1.4" fill="#c8d0de"/>
+    <circle cx="80" cy="150" r="1.4" fill="#c8d0de"/>
+    <circle cx="80" cy="168" r="1.4" fill="#c8d0de"/>
+  </g>
+
+  <!-- LEFT ARM -->
+  <g class="char-arm-left">
+    <path d="M34 98 Q32 98 31 104 L28 140 Q28 146 34 146 L46 146 Q52 146 52 140 L49 104 Q48 98 46 98Z" fill="url(#jkG)" stroke="#0a1828" stroke-width=".6"/>
+    <path d="M29 134 L28 140 Q28 146 34 146 L46 146 Q52 146 52 140 L51 134Z" fill="#9a1818" opacity=".8"/>
+    <path d="M30 144 L28 158 Q28 164 34 166 L44 166 Q50 164 50 158 L48 144Z" fill="url(#skG)"/>
+    <ellipse cx="40" cy="170" rx="7.5" ry="6.5" fill="url(#skG)" stroke="#c9966c" stroke-width=".5"/>
+    <ellipse cx="44.5" cy="167" rx="2.8" ry="3.8" fill="url(#skG)" transform="rotate(-20 44.5 167)"/>
+  </g>
+
+  <!-- RIGHT ARM -->
+  <g class="char-arm-right">
+    <path d="M108 98 Q110 98 111 104 L114 140 Q114 146 110 146 L126 146 Q130 146 130 140 L127 104 Q126 98 122 98Z" fill="url(#jkG)" stroke="#0a1828" stroke-width=".6"/>
+    <path d="M109 134 L110 140 Q110 146 116 146 L126 146 Q130 146 130 140 L129 134Z" fill="#9a1818" opacity=".8"/>
+    <path d="M110 144 L110 158 Q110 164 116 166 L126 166 Q130 164 130 158 L128 144Z" fill="url(#skG)"/>
+    <ellipse cx="120" cy="170" rx="7.5" ry="6.5" fill="url(#skG)" stroke="#c9966c" stroke-width=".5"/>
+    <ellipse cx="115.5" cy="167" rx="2.8" ry="3.8" fill="url(#skG)" transform="rotate(20 115.5 167)"/>
+  </g>
+
+  <!-- NECK -->
+  <path d="M72 84 L70 95 L80 97 L90 95 L88 84Z" fill="url(#skG)" stroke="#d4aa80" stroke-width=".4"/>
+  <path d="M66 92 Q80 96 94 92" stroke="#f0f4f8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- HEAD -->
+  <g class="char-head">
+    <!-- Ears -->
+    <ellipse cx="50" cy="58" rx="5" ry="6.5" fill="url(#skG)" stroke="#d4aa80" stroke-width=".4"/>
+    <ellipse cx="110" cy="58" rx="5" ry="6.5" fill="url(#skG)" stroke="#d4aa80" stroke-width=".4"/>
+    <!-- Inner ear -->
+    <path d="M51 57 Q52 60 51 62" stroke="#c9966c" stroke-width=".7" fill="none"/>
+    <path d="M109 57 Q108 60 109 62" stroke="#c9966c" stroke-width=".7" fill="none"/>
+
+    <!-- Face -->
+    <path d="M54 36 Q54 18 80 16 Q106 18 106 36 L106 62 Q106 82 80 84 Q54 82 54 62Z" fill="url(#skG)" stroke="#d4aa80" stroke-width=".6"/>
+    <!-- Cheeks -->
+    <ellipse cx="63" cy="65" rx="8" ry="4.5" fill="url(#ckG)"/>
+    <ellipse cx="97" cy="65" rx="8" ry="4.5" fill="url(#ckG)"/>
+    <!-- Chin shadow -->
+    <path d="M58 68 Q80 84 102 68" fill="none" stroke="#d4aa80" stroke-width=".4" opacity=".5"/>
+
+    <!-- HAIR -->
+    <!-- Crown and fringe -->
+    <path d="M54 36 Q52 14 80 10 Q108 12 106 36 Q104 28 96 24 Q88 20 80 20 Q62 20 58 28 Q54 34 54 36Z" fill="url(#hrG)"/>
+    <!-- Left side hair -->
+    <path d="M54 36 Q48 48 48 64 Q48 74 54 78 Q50 70 50 62 Q50 48 54 36Z" fill="url(#hrG)"/>
+    <!-- Right side hair -->
+    <path d="M106 36 Q112 48 112 64 Q112 74 106 78 Q110 70 110 62 Q110 48 106 36Z" fill="url(#hrG)"/>
+    <!-- Hair detail on top -->
+    <path d="M60 14 Q70 9 80 8 Q92 9 100 14" stroke="#0a0500" stroke-width="1.4" fill="none"/>
+    <path d="M78 10 Q76 16 72 22" stroke="#3a2000" stroke-width="1" fill="none" opacity=".6"/>
+
+    <!-- EYEBROWS -->
+    <path class="char-brow char-brow-l" d="M60 39 Q67.5 36.5 75 38.5" stroke="#2c1000" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path class="char-brow char-brow-r" d="M85 38.5 Q92.5 36.5 100 39" stroke="#2c1000" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+
+    <!-- EYE WHITES -->
+    <ellipse cx="67" cy="50" rx="7" ry="5" fill="#fff" stroke="#c9966c" stroke-width=".5"/>
+    <ellipse cx="93" cy="50" rx="7" ry="5" fill="#fff" stroke="#c9966c" stroke-width=".5"/>
+    <!-- IRIS (warm hazel) -->
+    <ellipse class="char-eye" cx="67" cy="50" rx="4.2" ry="4.5" fill="#7a4520"/>
+    <ellipse class="char-eye r" cx="93" cy="50" rx="4.2" ry="4.5" fill="#7a4520"/>
+    <!-- PUPILS -->
+    <circle cx="67" cy="50" r="2.2" fill="#0a0500"/>
+    <circle cx="93" cy="50" r="2.2" fill="#0a0500"/>
+    <!-- Highlights (life in the eyes) -->
+    <circle cx="65.5" cy="48.5" r="1.3" fill="#fff" opacity=".95"/>
+    <circle cx="91.5" cy="48.5" r="1.3" fill="#fff" opacity=".95"/>
+    <circle cx="68.2" cy="51.5" r=".7" fill="#fff" opacity=".7"/>
+    <circle cx="94.2" cy="51.5" r=".7" fill="#fff" opacity=".7"/>
+    <!-- EYELASHES -->
+    <path d="M61 47 Q64 45 67 46" stroke="#0a0500" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M67 46 Q70 45 73 47" stroke="#0a0500" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M87 47 Q90 45 93 46" stroke="#0a0500" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M93 46 Q96 45 99 47" stroke="#0a0500" stroke-width="1" fill="none" stroke-linecap="round"/>
+
+    <!-- NOSE -->
+    <path d="M79 58 Q78 63 80 65 Q82 63 81 58" stroke="#c9966c" stroke-width=".8" fill="none"/>
+
+    <!-- MOUTH (three variants) -->
+    <!-- Smile -->
+    <g class="char-mouth-smile">
+      <path d="M70 72 Q80 79 90 72" stroke="#c06040" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <path d="M72 72 Q80 76 88 72" fill="#e8a090" opacity=".55"/>
+      <path d="M70 72 Q74 70 80 71 Q86 70 90 72" stroke="#c06040" stroke-width=".8" fill="none" opacity=".7"/>
+      <circle cx="68.5" cy="72" r="1.3" fill="#cc8060" opacity=".55"/>
+      <circle cx="91.5" cy="72" r="1.3" fill="#cc8060" opacity=".55"/>
+    </g>
+    <!-- Neutral -->
+    <path class="char-mouth-neutral" d="M72 74 L88 74" stroke="#c06040" stroke-width="1.7" fill="none" stroke-linecap="round" style="opacity:0"/>
+    <!-- Frown -->
+    <path class="char-mouth-frown" d="M70 76 Q80 70 90 76" stroke="#c06040" stroke-width="1.7" fill="none" stroke-linecap="round" style="opacity:0"/>
+  </g>
+</g>
+</svg>
+</template>
+
+<script>
+/* ============================================================
+   CONFIGURATION
+   ⚠️ Rotate ElevenLabs key after pitch day
+   ============================================================ */
+const ELEVEN_API_KEY  = 'sk_9c8ae60cf56d8ee7cb1113abffb3718bb2ec965af5d53960';
+const ELEVEN_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';  // Rachel — warm female
+const ELEVEN_MODEL    = 'eleven_turbo_v2_5';
+
+/* ============================================================
+   CHARACTER — mount SVG into any target element
+   ============================================================ */
+function mountChar(el) {
+  const tpl = document.getElementById('charSVG');
+  el.innerHTML = '';
+  el.appendChild(tpl.content.cloneNode(true));
+}
+mountChar(document.getElementById('introPreview'));
+mountChar(document.getElementById('charWrap'));
+
+// Add particles to particle container
+const particleContainer = document.getElementById('charParticles');
+for (let i = 0; i < 6; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.cssText = `left:${20 + i * 22}px;bottom:${40 + (i % 3) * 20}px;animation-delay:${i * 0.5}s`;
+  particleContainer.appendChild(p);
+}
+
+/* ============================================================
+   STAGE MOOD + STATE
+   ============================================================ */
+const stage   = document.getElementById('sdiStage');
+const charWrap = document.getElementById('charWrap');
+let currentMood = 'happy';
+let charLeftPos = 20; // px from left (within stage)
+let waving = false;
+let dancing = false;
+
+function setMood(mood) {
+  currentMood = mood;
+  stage.classList.remove('mood-happy','mood-sad','mood-thinking','mood-speaking','mood-listening');
+  if (mood) stage.classList.add('mood-' + mood);
+}
+function setStageState(s) {
+  stage.classList.remove('walking','waving','dancing');
+  if (s) stage.classList.add(s);
+}
+
+// Walk by shifting char-wrap's left position within the stage
+function walkTo(_, mood = 'happy') {
+  setMood(mood);
+  const newLeft = mood === 'sad'
+    ? Math.max(5, charLeftPos - 40)
+    : Math.min(80, Math.max(10, charLeftPos + (Math.random() - 0.3) * 50));
+  charWrap.className = 'char-wrap ' + (mood === 'sad' ? 'walk-sad' : 'walk-happy');
+  charWrap.style.left = newLeft + 'px';
+  charLeftPos = newLeft;
+  setStageState('walking');
+  const dur = mood === 'sad' ? 8200 : 4200;
+  setTimeout(() => setStageState(''), dur);
+}
+
+function wave() {
+  setStageState('waving');
+  setTimeout(() => setStageState(''), 1400);
+}
+
+function dance(durationMs = 2500) {
+  setMood('happy');
+  setStageState('dancing');
+  setTimeout(() => setStageState(''), durationMs);
+}
+
+/* ============================================================
+   SCENARIO CAROUSEL
+   ============================================================ */
+const SCENARIOS = [
+  { id:'incident',  type:'urgent',   icon:'🚨', cat:'Needs Attention',  title:'Unusual incident',       sub:'Last night · B212 · No survey filed yet',            cta:'Investigate →',  fn:'demoIncidentSurvey' },
+  { id:'gateway',   type:'urgent',   icon:'⚡', cat:'Needs Attention',  title:'Gateway offline twice',  sub:'Same time both nights · Power issue · SOP ready',     cta:'Get SOP →',      fn:'demoGatewaySOP' },
+  { id:'inventory', type:'urgent',   icon:'📦', cat:'Needs Attention',  title:'Zero devices in stock',  sub:'Two move-ins Friday · Order now = Thursday delivery', cta:'Order now →',    fn:'demoInventoryOrder' },
+  { id:'video',     type:'revenue',  icon:'🎥', cat:'Revenue & Upsell', title:'Add video sensors',      sub:'You have motion · Video is one click away · $12/unit', cta:'Upgrade →',      fn:'demoVideoSensors' },
+  { id:'report',    type:'revenue',  icon:'📊', cat:'Revenue & Upsell', title:'May report ready',       sub:'Want me to summarize it in 3 sentences?',             cta:'Summarize →',    fn:'demoReportSummary' },
+  { id:'tasks',     type:'configure',icon:'✅', cat:'Not Activated',    title:'Task management',        sub:'Enable one cleaning rule to start?',                   cta:'Configure →',    fn:'demoTaskManagement' },
+  { id:'escalation',type:'configure',icon:'📣', cat:'Not Activated',    title:'Escalation pattern',     sub:'SMS, email, or call cascade · Not set up yet',        cta:'Set up →',       fn:'demoEscalation' },
+  { id:'seasonal',  type:'world',    icon:'🌱', cat:'Outside World',    title:"Nearby operators' trick", sub:'Summer move-ins · Working right now · Want to know?', cta:'Hear it →',      fn:'demoSeasonalTrick' },
+  { id:'story',     type:'world',    icon:'⭐', cat:'Outside World',    title:'Inspired story near you', sub:'71% → 94% occupancy in 90 days',                     cta:'Hear story →',   fn:'demoInspirationStory' },
+];
+
+/* Arc orbit parameters */
+const ARC = { radius: 245, span: 112 }; // span = total degrees of the fan
+let arcSelectedIdx = 4; // which card sits at the center (0° = pointing right)
+
+function cardBaseDeg(i) {
+  const step = ARC.span / (SCENARIOS.length - 1);
+  return -ARC.span / 2 + i * step;
+}
+
+function layoutArc() {
+  SCENARIOS.forEach((s, i) => {
+    const card = document.getElementById('card-' + s.id);
+    if (!card) return;
+    const deg = cardBaseDeg(i) - cardBaseDeg(arcSelectedIdx);
+    const rad = (deg * Math.PI) / 180;
+    const x = ARC.radius * Math.cos(rad);
+    const y = -ARC.radius * Math.sin(rad); // CSS y grows downward
+    const absDeg = Math.abs(deg);
+    const scale  = Math.max(0.60, 1 - absDeg / 160);
+    const opacity = Math.max(0.28, 1 - absDeg / 95);
+    card.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%)) scale(${scale})`;
+    card.style.opacity = String(opacity);
+    card.style.zIndex  = String(Math.round(scale * 20));
+  });
+}
+
+function renderCarousel() {
+  const orbit = document.getElementById('carouselOrbit');
+  orbit.innerHTML = SCENARIOS.map(s => `
+    <div class="carousel-card ${s.type}" id="card-${s.id}" onclick="${s.fn}()">
+      <div class="card-icon">${s.icon}</div>
+      <div class="card-cat">${s.cat}</div>
+      <div class="card-title">${s.title}</div>
+      <div class="card-sub">${s.sub}</div>
+      <button class="card-cta" onclick="${s.fn}();event.stopPropagation()">${s.cta}</button>
+    </div>`).join('');
+  layoutArc();
+}
+
+function carouselNav(dir) {
+  arcSelectedIdx = (arcSelectedIdx + dir + SCENARIOS.length) % SCENARIOS.length;
+  layoutArc();
+}
+
+function highlightCard(id) {
+  document.querySelectorAll('.carousel-card').forEach(c => c.classList.remove('active-card'));
+  const el = document.getElementById('card-' + id);
+  if (el) el.classList.add('active-card');
+  // Bring clicked card to arc center
+  const idx = SCENARIOS.findIndex(s => s.id === id);
+  if (idx !== -1) { arcSelectedIdx = idx; layoutArc(); }
+}
+
+/* ============================================================
+   RESPONSE PANEL
+   ============================================================ */
+const panel      = document.getElementById('responsePanel');
+const rpText     = document.getElementById('rpText');
+const rpCard     = document.getElementById('rpCard');
+const rpSig      = document.getElementById('rpSig');
+const rpDate     = document.getElementById('rpDate');
+const chatMsgs   = document.getElementById('chatMessages');
+const reopen     = document.getElementById('sdiReopen');
+let typeTimer = null;
+let lastPanelData = null;
+
+function setRpDate() {
+  const d = new Date();
+  rpDate.textContent = d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function clearPanel() {
+  if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+  rpText.innerHTML = '';
+  rpText.classList.remove('done');
+  rpCard.style.display = 'none';
+  rpCard.classList.remove('show');
+  rpSig.classList.remove('show');
+}
+
+function openPanel(data) {
+  stopSpeaking();
+  clearPanel();
+  setRpDate();
+  setMood('speaking');
+  lastPanelData = data;
+  panel.classList.add('open');
+  reopen.classList.remove('visible');
+
+  // Letter throw animation
+  throwLetterAnim();
+
+  // Start typewriter + voice after short delay
+  setTimeout(() => {
+    speakSDi(htmlToSpeech(data.body + (data.card ? `. ${data.card.tag}. ${data.card.title}. ${data.card.body}` : '')));
+    typewrite(rpText, data.body, () => {
+      if (data.card) {
+        rpCard.style.display = 'block';
+        rpCard.innerHTML = `
+          <div class="tag">${data.card.tag}</div>
+          <div class="title">${data.card.title}</div>
+          <div class="body">${data.card.body}</div>
+          <div class="cta">${data.card.buttons.map(b =>
+            `<button${b.ghost ? ' class="ghost"' : ''} onclick="${b.fn}()">${b.label}</button>`
+          ).join('')}</div>`;
+        requestAnimationFrame(() => rpCard.classList.add('show'));
+      }
+      rpSig.classList.add('show');
+    });
+  }, 500);
+}
+
+function closePanel() {
+  stopSpeaking();
+  setMood('happy');
+  panel.classList.remove('open');
+  if (lastPanelData) {
+    reopen.classList.add('visible');
+    document.getElementById('reopenLabel').textContent = 'View: ' + lastPanelData.label;
+  }
+}
+
+function reopenPanel() {
+  if (lastPanelData) openPanel(lastPanelData);
+}
+
+function throwLetterAnim() {
+  const lt = document.getElementById('letterThrow');
+  const stageRect = document.getElementById('sdiStage').getBoundingClientRect();
+  const startX = stageRect.left + stageRect.width * 0.8; // right edge of character
+  const startY = stageRect.top + stageRect.height * 0.35;
+  lt.style.cssText = `left:${startX}px;top:${startY}px;opacity:1;transform:scale(.6) rotate(-15deg);transition:none`;
+  // Target: top of the response panel
+  const panelRect = { right: window.innerWidth, top: 60 };
+  requestAnimationFrame(() => {
+    lt.className = 'letter-throw active fly';
+    lt.style.left = (window.innerWidth - 50) + 'px';
+    lt.style.top  = '80px';
+    lt.style.transform = 'scale(1.2) rotate(5deg)';
+    lt.style.opacity = '1';
+  });
+  setTimeout(() => { lt.style.opacity = '0'; lt.className = 'letter-throw'; }, 800);
+}
+
+/* ============================================================
+   TYPEWRITER
+   ============================================================ */
+function htmlToTypingStream(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  const stream = [];
+  function walk(node, tag) {
+    if (node.nodeType === 3) { for (const ch of node.textContent) stream.push({ ch, tag }); }
+    else if (node.nodeType === 1) {
+      const t = node.tagName.toLowerCase();
+      if (t === 'br') { stream.push({ ch: '\n', tag }); return; }
+      const nTag = (t==='strong'||t==='b') ? 'strong' : (t==='em'||t==='i') ? 'em' : tag;
+      for (const child of node.childNodes) walk(child, nTag);
+    }
+  }
+  for (const child of tmp.childNodes) walk(child, null);
+  return stream;
+}
+
+function typewrite(el, html, onDone) {
+  el.innerHTML = '';
+  const stream = htmlToTypingStream(html);
+  let i = 0, cTag = null, cSpan = null;
+  typeTimer = setInterval(() => {
+    if (i >= stream.length) {
+      clearInterval(typeTimer); typeTimer = null;
+      el.classList.add('done');
+      if (onDone) onDone();
+      return;
+    }
+    const { ch, tag } = stream[i++];
+    if (tag !== cTag) { cTag = tag; cSpan = tag ? document.createElement(tag) : null; if (cSpan) el.appendChild(cSpan); }
+    if (ch === '\n') (cSpan || el).appendChild(document.createElement('br'));
+    else (cSpan || el).appendChild(document.createTextNode(ch));
+  }, 22);
+}
+
+/* ============================================================
+   ACTIVITY FEEDS
+   ============================================================ */
+const activeData = [
+  { unit:'B226', when:'today 8:46:36 a.m.', ok:true },
+  { unit:'B226', when:'Sun 7:24:10 p.m.', ok:true },
+  { unit:'A137', when:'Sun 5:55:09 p.m.', ok:true },
+  { unit:'A161', when:'Sun 2:35:08 p.m.', ok:true },
+  { unit:'B226', when:'Sun 9:53:19 a.m.', ok:false },
+  { unit:'B212', when:'Sat 7:58:15 p.m.', ok:false },
+  { unit:'A137', when:'Sat 6:35:13 p.m.', ok:false },
+  { unit:'A137', when:'Sat 5:33:40 p.m.', ok:false },
+  { unit:'B226', when:'Sat 10:57:00 a.m.', ok:false }
+];
+const vacantData = [
+  { unit:'A161', when:'Sat 2:30:46 p.m.', label:'Day Time Extended Motion' },
+  { unit:'B228', when:'Sat 12:56:09 p.m.', label:'Active Motion' },
+  { unit:'B228', when:'Sat 11:45:37 a.m.', label:'Active Motion' }
+];
+const motionSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="4" r="2"/><path d="M9 11h6l-2 9-1-5-2 5z"/><path d="m6 7 4 2M18 7l-4 2"/></svg>`;
+function actRow(d, vacant) {
+  const icon = vacant ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>` : motionSvg;
+  const badge = (!vacant && d.ok) ? `<div class="act-badge ok"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-10"/></svg></div>` : `<div class="act-badge">?</div>`;
+  return `<div class="activity-row"><div class="act-icon">${icon}</div><div class="act-text"><div class="title">${vacant ? d.label : 'Active Motion'}</div><div class="meta">@<strong>${d.unit}</strong> ${d.when}</div></div>${badge}</div>`;
+}
+
+/* ============================================================
+   INTRO + WELCOME
+   ============================================================ */
+function dismissIntro() {
+  document.getElementById('introOverlay').classList.add('gone');
+  if ('speechSynthesis' in window) try { const w = new SpeechSynthesisUtterance(' '); w.volume = 0; window.speechSynthesis.speak(w); } catch(e) {}
+  document.getElementById('activeList').innerHTML = activeData.map(d => actRow(d, false)).join('');
+  document.getElementById('vacantList').innerHTML = vacantData.map(d => actRow(d, true)).join('');
+  renderCarousel();
+
+  const isFile = location.protocol === 'file:';
+  if (ELEVEN_API_KEY && ELEVEN_VOICE_ID) {
+    setVoicePip(isFile ? 'browser' : 'eleven', isFile ? 'file:// → use Live Server for ElevenLabs' : 'ElevenLabs ready');
+  } else {
+    setVoicePip('browser', 'Voice: browser TTS');
+  }
+  setTimeout(beginWelcome, 1200);
+}
+
+function beginWelcome() {
+  setMood('happy');
+  wave();
+  setTimeout(() => {
+    openPanel({
+      label: 'Good morning',
+      body: `Good morning, Cathy. Before you start your day — <em>I need to go over a few things with you.</em><br><br>Some need your attention right now. Others are opportunities I spotted. Tap any card in the row below and I'll take you through it.`,
+      card: null
+    });
+  }, 1600);
+}
+
+function onCharTap() {
+  stopSpeaking();
+  if (currentMood === 'sad') { setMood('happy'); wave(); openPanel({ label:'Cheered up', body:`Thanks. I needed that. <em>Back to it.</em>`, card:null }); }
+  else { wave(); openPanel({ label:'Help', body:`Tap any card in the row below to see what I found. Or tap <em>"Talk to SDi"</em> to ask me anything directly.`, card:null }); }
+}
+
+/* ============================================================
+   MONEY COUNTER
+   ============================================================ */
+let moneyFound = 0;
+function bumpMoney(amount) {
+  moneyFound += amount;
+  const el = document.getElementById('moneyCounter');
+  const valEl = document.getElementById('moneyVal');
+  const start = parseInt(valEl.textContent.replace(/[^0-9]/g, '')) || 0;
+  const t0 = performance.now();
+  function step(now) {
+    const p = Math.min((now - t0) / 900, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    valEl.textContent = '$' + Math.round(start + (moneyFound - start) * e).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+  el.classList.add('bump');
+  setTimeout(() => el.classList.remove('bump'), 600);
+}
+
+/* ============================================================
+   SCENARIOS
+   ============================================================ */
+function runScenario(id, mood, body, card, money, celebrate) {
+  stopSpeaking();
+  highlightCard(id);
+  setMood(mood);
+  if (mood === 'sad') walkTo(0, 'sad');
+  if (money) setTimeout(() => bumpMoney(money), 1200);
+  openPanel({ label: card ? card.title : id, body, card });
+  if (celebrate) setTimeout(() => dance(2200), 5000);
+}
+
+function demoIncidentSurvey() {
+  runScenario('incident', 'sad',
+    `Hey Cathy — did you look into the <strong>unusual incident last night at unit B212</strong>? Motion triggered at 2:14 AM, not an authorized tenant. There's <em>no survey on file.</em><br><br>Give me the details and I'll fill and submit the survey for you right now.`,
+    { tag:'🔴 Needs attention · Incident survey', title:'B212 · Unauthorized access · 2:14 AM',
+      body:'Protocol requires a survey within 24 hours. Tell me what happened verbally — I\'ll structure it and submit.',
+      buttons:[{ label:'Fill survey now', fn:'cardAction_fillSurvey' },{ label:'Snooze', fn:'cardSnooze', ghost:true }] }
+  );
+}
+window.cardAction_fillSurvey = () => { closePanel(); setTimeout(() => { dance(1800); openPanel({ label:'Survey submitted', body:`Survey submitted. I\'ve filed it under <strong>Incident #B212-2614</strong> and notified your area manager. <em>Well handled.</em>`, card:null }); }, 700); };
+
+function demoGatewaySOP() {
+  runScenario('gateway', 'sad',
+    `Your <strong>gateway at Antioch went offline twice in the last two days — both times at 11:45 PM.</strong> That's a power pattern, not a hardware failure. Likely a scheduled power event or a brownout on that circuit.<br><br>Would you like the StorageDefender SOP for this situation?`,
+    { tag:'⚠️ Troubleshooting · Gateway offline', title:'G/W offline · Mon & Tue · 11:45 PM exactly',
+      body:'SOP covers: UPS installation options, backup power config, auto-reconnect settings, and SD support escalation steps.',
+      buttons:[{ label:'Get SOP from SD', fn:'cardAction_getSOP' },{ label:'Later', fn:'cardSnooze', ghost:true }] }
+  );
+}
+window.cardAction_getSOP = () => { closePanel(); setTimeout(() => openPanel({ label:'SOP sent', body:`SOP sent to your inbox and bookmarked in Help Resources. The key action: <strong>install a UPS on the gateway circuit</strong> — eliminates this pattern permanently. I\'ve flagged a service ticket for your team.`, card:null }), 700); };
+
+function demoInventoryOrder() {
+  runScenario('inventory', 'sad',
+    `Did you check the inventory today? <strong>Zero smart unit monitoring devices available.</strong> You have two move-ins scheduled for this Friday and nothing to install.<br><br>Want me to order the next batch? Delivery is 2 business days — arrives Thursday if ordered now.`,
+    { tag:'🔴 Inventory alert · Devices', title:'0 devices in stock · 2 move-ins Friday',
+      body:'Standard reorder: 5-pack SmartUnit v3 sensors at $89/unit. Auto-invoiced to your account. Delivered Thursday.',
+      buttons:[{ label:'Order 5 devices', fn:'cardAction_orderDevices' },{ label:'Later', fn:'cardSnooze', ghost:true }] }
+  );
+}
+window.cardAction_orderDevices = () => { closePanel(); setTimeout(() => { dance(1800); openPanel({ label:'Ordered', body:`<strong>Order placed.</strong> 5× SmartUnit v3 sensors, arriving Thursday. I\'ve notified the install team and blocked time on the Friday calendar. <em>All set.</em>`, card:null }); bumpMoney(0); }, 700); };
+
+function demoVideoSensors() {
+  runScenario('video', 'happy',
+    `You have <strong>motion sensors</strong> across all 5 active units — great foundation. But did you know there are <strong>video sensors</strong> available that give you actual footage, not just a trigger? Same gateway, same app, one click to add.<br><br>Upgrading also unlocks insurance dispute resolution — footage reduces claims by ~70%.`,
+    { tag:'🎯 Upsell · Partner hardware upgrade', title:'Add video coverage to 5 active units',
+      body:'Cost: $12/unit/month. Footage stored 30 days, viewable in the SD app. SD partner handles installation. Tax-deductible as security equipment.',
+      buttons:[{ label:'Notify SD team to order', fn:'cardAction_notifySD' },{ label:'Later', fn:'cardSnooze', ghost:true }] },
+    0, true
+  );
+}
+window.cardAction_notifySD = () => {
+  closePanel();
+  setTimeout(() => {
+    dance(2000);
+    openPanel({ label:'SD team notified', body:`<strong>Done — StorageDefender team has been notified.</strong> Your account manager will reach out within one business day to confirm pricing and schedule installation. <em>Great move, Cathy.</em>`, card:null });
+  }, 700);
+};
+
+function demoTaskManagement() {
+  runScenario('tasks', 'thinking',
+    `Task management is built into your plan and <em>has never been activated.</em> Here's a quick way to get started: one rule — a <strong>Cleaning Task</strong> that fires automatically every time a unit moves out.<br><br>Every move-out would auto-create a cleaning ticket, assign it to the maintenance queue, and notify the facility manager. Zero manual work.`,
+    { tag:'⚙️ Feature activation · Task module', title:'Enable: Move-out → Auto cleaning task',
+      body:'Trigger: Unit move-out event → Create: "Cleaning" task → Assign: Maintenance queue → Notify: Facility manager via SMS. Activates in 30 seconds.',
+      buttons:[{ label:'Enable this rule now', fn:'cardAction_enableTask' },{ label:'See all task types', fn:'cardAction_seeTaskTypes' },{ label:'Later', fn:'cardSnooze', ghost:true }] }
+  );
+}
+window.cardAction_enableTask = () => {
+  closePanel();
+  setTimeout(() => {
+    dance(1800);
+    openPanel({ label:'Task rule enabled', body:`<strong>Task rule enabled.</strong> The cleaning task will now auto-create on every move-out at Antioch. You\'ll see your first task appear the next time a tenant moves out. <em>One rule, zero manual effort.</em>`, card:null });
+  }, 700);
+};
+window.cardAction_seeTaskTypes = () => {
+  closePanel();
+  setTimeout(() => openPanel({
+    label:'Task types',
+    body:`StorageDefender supports these task types: <strong>Cleaning</strong>, <strong>Inspection</strong>, <strong>Maintenance</strong>, <strong>Lock enforcement</strong>, <strong>Auction prep</strong>, and <strong>Custom</strong>. Each can be triggered by events (move-out, move-in, incident, overdue payment) or set on a schedule. Want to set up a second rule?`,
+    card:null
+  }), 700);
+};
+
+function demoEscalation() {
+  runScenario('escalation', 'thinking',
+    `Your escalation pattern has <em>never been configured.</em> Right now, if a serious incident occurs after hours, nobody gets automatically notified.<br><br>I can set this up in three communication modes: <strong>SMS, email, or call cascade.</strong> Takes two minutes. Which would you like?`,
+    { tag:'⚙️ Not configured · Escalation comms', title:'Set up after-hours incident routing',
+      body:'Example: 1st - SMS to facility manager → 2nd - Call backup contact → 3rd - Email ops team. Triggers on: unauthorized access, gateway offline, sensor tamper alert.',
+      buttons:[{ label:'Set up SMS first', fn:'cardAction_setupSMS' },{ label:'Set up email first', fn:'cardAction_setupEmail' },{ label:'Later', fn:'cardSnooze', ghost:true }] }
+  );
+}
+window.cardAction_setupSMS = () => { closePanel(); setTimeout(() => { dance(1500); openPanel({ label:'SMS escalation set', body:`<strong>SMS escalation configured.</strong> Any after-hours incident will now trigger an immediate text to your number, then to your backup contact 10 minutes later if unacknowledged. <em>Your facility now has a safety net.</em>`, card:null }); }, 700); };
+window.cardAction_setupEmail = () => { closePanel(); setTimeout(() => openPanel({ label:'Email escalation set', body:`<strong>Email escalation configured.</strong> Incident alerts will now go to your ops team email within 2 minutes of trigger. Reply to acknowledge. Would you like to add SMS as a secondary layer?`, card:null }), 700); };
+
+function demoReportSummary() {
+  runScenario('report', 'happy',
+    `Your <strong>May 2026 facility report</strong> is built and ready. 12 pages covering occupancy trends, revenue breakdown, incident rate, device health scores, and two flagged items that need your sign-off.<br><br>Want me to summarize it in 3 sentences?`,
+    { tag:'📊 Enterprise · Monthly report · May 2026', title:'West Coast Antioch · May 2026',
+      body:'Occupancy: 91% (+3% MoM) · Revenue: $487K (+$11.4K) · Incidents: 7 open · Devices: 5/5 healthy. Two items need sign-off: late-fee policy update and a device reorder threshold.',
+      buttons:[{ label:'Get full PDF', fn:'cardAction_getPDF' },{ label:'Email to team', fn:'cardAction_emailReport' },{ label:'Close', fn:'cardSnooze', ghost:true }] }
+  );
+}
+window.cardAction_getPDF = () => { closePanel(); setTimeout(() => openPanel({ label:'PDF ready', body:`Report PDF is now in your <strong>Reports tab</strong> and sent to your inbox. The two flagged items are highlighted on pages 4 and 9. <em>Quick month, Cathy.</em>`, card:null }), 700); };
+window.cardAction_emailReport = () => { closePanel(); setTimeout(() => { dance(1500); openPanel({ label:'Report emailed', body:`<strong>Report emailed to your team.</strong> Three recipients. Subject: "Antioch · May 2026 Summary." I\'ve marked it as reviewed. <em>Done.</em>`, card:null }); }, 700); };
+
+function demoSeasonalTrick() {
+  runScenario('seasonal', 'happy',
+    `Your nearby operators are doing something smart right now for summer move-in season — and it's working. They're offering <strong>"first month free" on units over 150 sq ft, listed only on Zillow and Facebook Marketplace</strong> — skipping SpareFoot entirely.<br><br>Lower commission. Higher volume. Want the full playbook?`,
+    { tag:'💡 Outside world · Seasonal strategy', title:'Summer move-in trick · Working right now',
+      body:'"First month free" on 150+ sq ft, listed on Zillow + FB Marketplace only. Avg: 12 extra move-ins/month. Net impact after free month: +$8K MRR. Zero SpareFoot commission.',
+      buttons:[{ label:'See the playbook', fn:'cardAction_playbook' },{ label:'Later', fn:'cardSnooze', ghost:true }] },
+    0, true
+  );
+}
+window.cardAction_playbook = () => { closePanel(); setTimeout(() => openPanel({ label:'Playbook', body:`<strong>The Playbook:</strong><br><br>1. Create a Zillow "for rent" listing for your 150+ sq ft units with "1st month free" in the headline.<br>2. Post same on Facebook Marketplace, neighborhood groups.<br>3. When they book, capture the referral source in SD. Track net revenue after month 1.<br><br>Want me to draft the listing copy for you?`, card:null }), 700); };
+
+function demoInspirationStory() {
+  runScenario('story', 'happy',
+    `A facility manager <em>two zip codes from you</em> — James at Bay Area Storage — grew occupancy from <strong>71% to 94% in 90 days.</strong> His approach? He started sending a personal text to every new move-in on Day 3. Not marketing. Just a check-in: "How's the unit working for you?"<br><br>Response rate: 62%. Referrals generated: 18. Churn rate that quarter: 4%.`,
+    { tag:'💡 Outside world · Peer success story', title:"From 71% to 94% in 90 days — here's how",
+      body:"James's cost: ~$40/month in time. Revenue impact: +$22K MRR. The check-in text is now a StorageDefender template. I can activate it for Antioch right now.",
+      buttons:[{ label:'Activate Day-3 text', fn:'cardAction_activateText' },{ label:'Later', fn:'cardSnooze', ghost:true }] },
+    0, true
+  );
+}
+window.cardAction_activateText = () => { closePanel(); setTimeout(() => { dance(2000); openPanel({ label:'Day-3 text activated', body:`<strong>Day-3 welcome text activated for Antioch.</strong> Every new move-in will now receive a personal check-in text on Day 3, automatically, using the James template. <em>Small touch. Big impact.</em>`, card:null }); }, 700); };
+
+window.cardSnooze = () => { closePanel(); setTimeout(() => openPanel({ label:'Snoozed', body:`Tucked away. I\'ll bring it back tomorrow morning.`, card:null }), 700); };
+
+/* ============================================================
+   CHAT INSIDE PANEL
+   ============================================================ */
+function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 90) + 'px'; }
+function onChatKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+
+function addChatMsg(text, who) {
+  const div = document.createElement('div');
+  div.className = `chat-msg from-${who}`;
+  div.textContent = text;
+  chatMsgs.appendChild(div);
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+}
+
+function sendChat() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; inp.style.height = 'auto';
+  addChatMsg(text, 'user');
+  // Find response
+  let r = null;
+  for (const i of intents) { if (i.match.test(text)) { r = i.response(); break; } }
+  if (!r) r = fallback();
+  setTimeout(() => {
+    addChatMsg(htmlToSpeech(r.body), 'sdi');
+    speakSDi(htmlToSpeech(r.body));
+  }, 600);
+}
+
+/* ============================================================
+   VOICE — ElevenLabs + browser TTS fallback
+   ============================================================ */
+let voiceEnabled = true;
+let chosenVoice = null;
+let currentSpeakingAudio = null;
+
+function pickVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  const priority = [
+    v => /Microsoft.*Aria.*Natural/i.test(v.name),
+    v => /Microsoft.*Jenny/i.test(v.name),
+    v => /Google.*US.*English/i.test(v.name) && !/Male/i.test(v.name),
+    v => /Samantha|Ava|Karen/i.test(v.name),
+    v => v.lang === 'en-US', v => /^en/i.test(v.lang)
+  ];
+  for (const t of priority) { const f = voices.find(t); if (f) return f; }
+  return voices[0];
+}
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => { chosenVoice = pickVoice(); };
+  setTimeout(() => { chosenVoice = pickVoice(); }, 200);
+}
+
+function htmlToSpeech(html) {
+  const tmp = document.createElement('div'); tmp.innerHTML = html;
+  return (tmp.textContent || '').replace(/\$([\d,]+)/g, (m, n) => n.replace(/,/g,'') + ' dollars')
+    .replace(/MRR/g,'monthly recurring revenue').replace(/ARR/g,'annual recurring revenue')
+    .replace(/SDi/g,'es-dee').replace(/BigQuery/g,'Big Query').replace(/PII/g,'P I I')
+    .replace(/ — /g,'... ').replace(/ - /g,'... ').replace(/\s+/g,' ').trim();
+}
+
+function setVoicePip(state, label) {
+  const pip = document.getElementById('voicePip');
+  pip.classList.remove('eleven','browser','error');
+  if (state) pip.classList.add(state);
+  document.getElementById('voicePipLabel').textContent = label;
+}
+
+function setSpeakingState(on) {
+  document.getElementById('voicePip').classList.toggle('speaking', on);
+  if (on) setMood('speaking');
+  else if (currentMood === 'speaking') setMood('happy');
+}
+
+function speakSDi(text) {
+  if (!voiceEnabled || !text) return;
+  if (ELEVEN_API_KEY && ELEVEN_VOICE_ID && location.protocol !== 'file:') return speakElevenLabs(text);
+  speakBrowser(text);
+}
+
+function speakBrowser(text) {
+  if (!('speechSynthesis' in window)) return;
+  setVoicePip('browser','Voice: browser TTS');
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.voice = chosenVoice || pickVoice();
+  u.rate = 0.92; u.pitch = 1.06;
+  u.onstart = () => setSpeakingState(true);
+  u.onend = () => setSpeakingState(false);
+  u.onerror = () => setSpeakingState(false);
+  try { window.speechSynthesis.speak(u); } catch(e) {}
+}
+
+async function speakElevenLabs(text) {
+  setVoicePip('eleven','Voice: ElevenLabs…');
+  try {
+    setSpeakingState(true);
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVEN_VOICE_ID}/stream`, {
+      method:'POST', headers:{ 'xi-api-key':ELEVEN_API_KEY, 'Content-Type':'application/json', Accept:'audio/mpeg' },
+      body:JSON.stringify({ text, model_id:ELEVEN_MODEL, voice_settings:{ stability:.45, similarity_boost:.75, style:.35, use_speaker_boost:true } })
+    });
+    if (!res.ok) throw new Error('eleven_' + res.status);
+    setVoicePip('eleven','Voice: ElevenLabs ✓');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    currentSpeakingAudio = new Audio(url);
+    currentSpeakingAudio.onended = () => { setSpeakingState(false); URL.revokeObjectURL(url); currentSpeakingAudio = null; };
+    currentSpeakingAudio.onerror = () => { setSpeakingState(false); currentSpeakingAudio = null; };
+    await currentSpeakingAudio.play();
+  } catch(e) {
+    setSpeakingState(false);
+    setVoicePip('error','ElevenLabs failed → browser fallback');
+    console.warn('[SDi] EL fallback:', e.message);
+    speakBrowser(text);
+  }
+}
+
+function stopSpeaking() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if (currentSpeakingAudio) { try { currentSpeakingAudio.pause(); } catch(e) {} currentSpeakingAudio = null; }
+  setSpeakingState(false);
+}
+
+/* ============================================================
+   MICROPHONE — tap to talk
+   ============================================================ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let micRecog = null, micOn = false;
+
+function toggleMic() {
+  if (!SR) { addChatMsg("Your browser doesn't support voice — try Chrome or Edge.", 'sdi'); return; }
+  if (micOn) { stopMic(); return; }
+  micOn = true;
+  stopSpeaking();
+  setMood('listening');
+  document.getElementById('sdiTalkBtn').classList.add('listening');
+  document.getElementById('talkBtnLabel').textContent = 'Listening…';
+  document.getElementById('chatMicBtn').classList.add('listening');
+  if (!panel.classList.contains('open')) openPanel({ label:'Listening', body:'', card:null });
+
+  let buffer = '';
+  micRecog = new SR();
+  micRecog.continuous = false; micRecog.interimResults = true; micRecog.lang = 'en-US';
+  micRecog.onresult = (e) => { let t = ''; for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript; buffer = t; };
+  micRecog.onend = () => {
+    micOn = false;
+    setMood('happy');
+    document.getElementById('sdiTalkBtn').classList.remove('listening');
+    document.getElementById('talkBtnLabel').textContent = 'Talk to SDi';
+    document.getElementById('chatMicBtn').classList.remove('listening');
+    if (buffer.trim().length > 1) { addChatMsg(buffer, 'user'); setTimeout(() => respondTo(buffer), 400); }
+  };
+  micRecog.onerror = micRecog.onend;
+  try { micRecog.start(); } catch(e) { micRecog.onend(); }
+}
+
+function stopMic() {
+  micOn = false;
+  document.getElementById('sdiTalkBtn').classList.remove('listening');
+  document.getElementById('talkBtnLabel').textContent = 'Talk to SDi';
+  document.getElementById('chatMicBtn').classList.remove('listening');
+  try { micRecog && micRecog.stop(); } catch(e) {}
+}
+
+/* ============================================================
+   WAKE WORD — "Hey SD"
+   ============================================================ */
+let wakeRecog = null, wakeArmed = false, inCapture = false, wakeBuffer = '';
+const WAKE = [/\bhey\s*s\.?\s*d\b/i,/\bhi\s*s\.?\s*d\b/i,/\bok(?:ay)?\s*s\.?\s*d\b/i,/\bhey\s*(?:said|sad|sed|seed|sd)\b/i];
+
+function setWakeUI(state, label) {
+  const ind = document.getElementById('wakeIndicator');
+  ind.classList.remove('armed','heard');
+  if (state) ind.classList.add(state);
+  document.getElementById('wakeLabel').textContent = label;
+}
+
+function enableWakeWord() {
+  if (!SR) return;
+  wakeArmed = true;
+  document.getElementById('wakeEnableBtn').style.display = 'none';
+  setWakeUI('armed','Say "Hey SD"');
+  startWakeRecog();
+  wave();
+  addChatMsg("I'm listening. Say 'Hey SD' any time.", 'sdi');
+}
+
+function startWakeRecog() {
+  if (!SR || !wakeArmed) return;
+  wakeRecog = new SR();
+  wakeRecog.continuous = true; wakeRecog.interimResults = true; wakeRecog.lang = 'en-US';
+  wakeRecog.onresult = (e) => {
+    let heard = ''; for (let i = e.resultIndex; i < e.results.length; i++) heard += e.results[i][0].transcript;
+    if (!inCapture && WAKE.some(re => re.test(heard))) {
+      inCapture = true; wakeBuffer = heard.replace(/\bhey\s*s\.?\s*d\b/gi,'').trim();
+      setWakeUI('heard','Yes, Cathy?');
+      setTimeout(() => { if (inCapture) { if (wakeBuffer.length > 1) respondTo(wakeBuffer); inCapture = false; wakeBuffer = ''; setWakeUI('armed','Say "Hey SD"'); } }, 3500);
+    } else if (inCapture) wakeBuffer = (wakeBuffer + ' ' + heard).trim();
+  };
+  wakeRecog.onend = () => { if (wakeArmed) setTimeout(startWakeRecog, 400); };
+  wakeRecog.onerror = wakeRecog.onend;
+  try { wakeRecog.start(); } catch(e) { setTimeout(startWakeRecog, 600); }
+}
+
+/* ============================================================
+   RESPONSE INTENTS
+   ============================================================ */
+const intents = [
+  { match:/churn|leaving|move.?out|retention/i, response:() => ({ body:`I'm watching <strong>142 tenants</strong> trending toward move-out in 90 days — $48K MRR at risk. Top signal: access drops 60%+ then a payment slips. Want me to draft a rate-hold offer for the top 10?` }) },
+  { match:/margin|profitable|best facility|top facility/i, response:() => ({ body:`<strong>Northside</strong> is your margin star — 91% occupancy, $189 avg rent, only 2 incidents this quarter. If you copied their pricing model here and to Westgate, that's roughly <em>+$7,400 MRR</em>.` }) },
+  { match:/news|industry|trend|hot/i, response:() => ({ body:`Three things this week. SpareFoot's demand index dropped 4% in Sunbelt metros. Insurance attach hit <em>71% industry-wide</em> — yours is at 58%. And two AI pricing tools just launched. Which should we dig into?` }) },
+  { match:/revenue|grow|increase|boost|upsell/i, response:() => ({ body:`Three plays: <strong>Insurance attach</strong> (~$8K MRR), <strong>size upgrades</strong> for tenured renters (~$900), <strong>climate-control upsell</strong> (~$1.2K). Total: roughly <em>$10.1K MRR, $121K ARR</em>. Want me to queue all three?` }) },
+  { match:/incident|alert|broken|gateway/i, response:() => ({ body:`Seven open incidents. Most urgent: <strong>Westgate</strong> — three gateway disconnects in 48 hours, units in the 200 series. Likely a switch flaking. I'd dispatch before tenants notice.` }) },
+  { match:/cost|price|how much|charge/i, response:() => ({ body:`Under <strong>$0.10/user/month</strong> in operating cost. We'd price SDi at $19/facility/month (Pro) or $99/portfolio/month (Enterprise). Pays for itself in the first week.` }) },
+  { match:/joke|funny|laugh/i, response:() => ({ body:`Why did the storage unit join therapy? <em>Too much baggage.</em> ... I'll see myself out.` }) },
+  { match:/thanks|thank you|good job/i, response:() => ({ body:`Anytime. This is what I'm here for.` }) },
+  { match:/hello|hi|hey|morning/i, response:() => ({ body:`Hey Cathy. Today's highlights or straight into the numbers?` }) },
+];
+
+function fallback() { return { body:`Outside my scripted set — but in production I'd run a Big Query intent query against your data. Try: churn risk, revenue plays, industry news, or any scenario card.` }; }
+
+function respondTo(text) {
+  let r = null;
+  for (const i of intents) { if (i.match.test(text)) { r = i.response(); break; } }
+  if (!r) r = fallback();
+  addChatMsg(htmlToSpeech(r.body), 'sdi');
+  speakSDi(htmlToSpeech(r.body));
+  setMood('happy');
+}
+
+/* Escape closes panel */
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open')) closePanel(); });
+
+/* ============================================================
+   FEEDBACK RECORDER
+   ============================================================ */
+let fbMode = 'audio', fbStream = null, fbRecorder = null, fbChunks = [], fbBlob = null, fbTimer = null;
+const fbModal = document.getElementById('feedbackModal');
+const fbPreview = document.getElementById('fbPreview');
+const fbPrimary = document.getElementById('fbPrimary');
+
+function openFeedback() { resetFb(); fbModal.classList.add('open'); }
+function setFeedbackMode(m) { fbMode = m; document.getElementById('modeAudio').classList.toggle('active',m==='audio'); document.getElementById('modeVideo').classList.toggle('active',m==='video'); resetFb(); }
+function resetFb() { fbBlob = null; fbChunks = []; fbPreview.innerHTML = `<div style="text-align:center"><div style="margin-bottom:8px;font-size:14px;color:#94a3b8">Tap <strong style="color:#cbd5e1">Start</strong> when ready</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace">10s max · stays on device</div></div>`; fbPrimary.textContent = 'Start'; fbPrimary.className = 'fb-primary'; fbPrimary.onclick = startFeedback; fbPrimary.style.display = ''; const r = document.getElementById('rerecordBtn'); if (r) r.remove(); }
+async function startFeedback() {
+  try { fbStream = await navigator.mediaDevices.getUserMedia(fbMode==='video' ? { audio:true, video:{ width:{ideal:640}, height:{ideal:360}, facingMode:'user' } } : { audio:true }); }
+  catch(e) { fbPreview.innerHTML = `<div style="text-align:center;padding:20px;color:#fca5a5;font-size:13px">Mic/camera access denied.</div>`; return; }
+  if (fbMode==='video') { const v = document.createElement('video'); v.srcObject = fbStream; v.autoplay = true; v.muted = true; fbPreview.innerHTML = ''; fbPreview.appendChild(v); }
+  else { fbPreview.innerHTML = `<div class="audio-bars">${[0,1,2,3,4,5,6].map(i=>`<div class="bar" style="animation-delay:${i*.1}s"></div>`).join('')}</div>`; }
+  const pip = document.createElement('div'); pip.className = 'rec-pip'; pip.innerHTML = `<span class="red-dot"></span> <span id="recCounter">0.0s</span>`; fbPreview.appendChild(pip);
+  fbChunks = [];
+  try { fbRecorder = new MediaRecorder(fbStream); } catch(e) { return; }
+  fbRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) fbChunks.push(e.data); };
+  fbRecorder.onstop = () => { fbBlob = new Blob(fbChunks, { type:fbRecorder.mimeType }); showFbPreview(); };
+  fbRecorder.start();
+  const t0 = Date.now();
+  fbTimer = setInterval(() => { const t = (Date.now() - t0) / 1000; const c = document.getElementById('recCounter'); if (c) c.textContent = t.toFixed(1) + 's'; if (t >= 10) stopFb(); }, 100);
+  fbPrimary.textContent = 'Stop'; fbPrimary.className = 'fb-danger'; fbPrimary.onclick = stopFb;
+}
+function stopFb() { if (fbTimer) clearInterval(fbTimer); if (fbRecorder && fbRecorder.state !== 'inactive') try { fbRecorder.stop(); } catch(e) {} if (fbStream) { fbStream.getTracks().forEach(t => t.stop()); fbStream = null; } }
+function showFbPreview() {
+  const url = URL.createObjectURL(fbBlob); fbPreview.innerHTML = '';
+  if (fbMode==='video') { const v = document.createElement('video'); v.src = url; v.controls = true; fbPreview.appendChild(v); }
+  else { const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px;color:#cbd5e1;'; const a = document.createElement('audio'); a.src = url; a.controls = true; wrap.innerHTML = '<div style="font-size:13px">Preview:</div>'; wrap.appendChild(a); fbPreview.appendChild(wrap); }
+  fbPrimary.textContent = 'Submit'; fbPrimary.className = 'fb-primary'; fbPrimary.onclick = submitFb;
+  const actions = document.getElementById('fbActions');
+  if (!document.getElementById('rerecordBtn')) { const re = document.createElement('button'); re.className = 'fb-ghost'; re.id = 'rerecordBtn'; re.textContent = 'Re-record'; re.onclick = resetFb; actions.insertBefore(re, fbPrimary); }
+}
+function submitFb() {
+  const sizeKB = fbBlob ? Math.round(fbBlob.size / 1024) : 0;
+  fbPreview.innerHTML = `<div style="text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:#43a047;color:#fff;display:grid;place-items:center;margin:0 auto 12px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-10"/></svg></div><div style="font-family:'Fraunces',serif;font-size:18px;color:#e8eef7;margin-bottom:4px">Thank you, Cathy.</div><div style="font-size:12px;color:#94a3b8;font-family:'JetBrains Mono',monospace">${sizeKB}KB · ${fbMode} · queued</div></div>`;
+  fbPrimary.style.display = 'none'; const r = document.getElementById('rerecordBtn'); if (r) r.remove();
+  stopFb(); setTimeout(cancelFeedback, 2400);
+  setTimeout(() => addChatMsg("I heard you. Adjusting how I work for you now.", 'sdi'), 2800);
+}
+function cancelFeedback() { stopFb(); fbModal.classList.remove('open'); resetFb(); }
+
+</script>
+</body>
+</html>
