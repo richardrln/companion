@@ -1,0 +1,1557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision MVP Prototype</title>
+<style>
+  /* ============================================================
+     Vision MVP Prototype — functional + technical
+     Standalone. No dependencies. Edit freely.
+
+     WHAT IS REAL: all detection geometry, pixel counts, region
+     analysis, bounding boxes and the crack measurement are
+     genuinely computed in-browser from canvas pixel data.
+     WHAT IS SIMULATED: the natural-language caption (a real VLM
+     call would produce it) and the cost figures (arithmetic from
+     published rates). Both are labelled in the UI.
+     ============================================================ */
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  img, svg, canvas { max-width: 100%; }
+  button { font: inherit; color: inherit; }
+
+  :root {
+    --ground: #F3F5F7;
+    --card: #FFFFFF;
+    --panel: #ECF0F2;
+    --panel-2: #E0E7EA;
+    --ink: #11161A;
+    --ink-2: #39434A;
+    --muted: #68737A;
+    --rule: #D7DFE3;
+    --rule-hi: #B8C4CA;
+    --accent: #0A6D77;
+    --accent-soft: #DAECEE;
+    --fn: #0A6D77;
+    --fn-soft: #DAECEE;
+    --tech: #6B3FA0;
+    --tech-soft: #EBE3F5;
+    --good: #2B7A51;
+    --good-soft: #DDEDE4;
+    --warn: #8C6010;
+    --warn-soft: #F5EBD8;
+    --crit: #9A3634;
+    --crit-soft: #F6E1E0;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0C1012; --card: #15191C; --panel: #1D2429; --panel-2: #252D32;
+      --ink: #E7ECEF; --ink-2: #B1BCC2; --muted: #838E95;
+      --rule: #252E33; --rule-hi: #384349;
+      --accent: #4EC3CC; --accent-soft: #0E3237;
+      --fn: #4EC3CC; --fn-soft: #0E3237;
+      --tech: #B48FE0; --tech-soft: #231A32;
+      --good: #6CBE91; --good-soft: #132B20;
+      --warn: #D6A44C; --warn-soft: #2D2414;
+      --crit: #E38381; --crit-soft: #321819;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0C1012; --card: #15191C; --panel: #1D2429; --panel-2: #252D32;
+    --ink: #E7ECEF; --ink-2: #B1BCC2; --muted: #838E95;
+    --rule: #252E33; --rule-hi: #384349;
+    --accent: #4EC3CC; --accent-soft: #0E3237;
+    --fn: #4EC3CC; --fn-soft: #0E3237;
+    --tech: #B48FE0; --tech-soft: #231A32;
+    --good: #6CBE91; --good-soft: #132B20;
+    --warn: #D6A44C; --warn-soft: #2D2414;
+    --crit: #E38381; --crit-soft: #321819;
+  }
+
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 30px 18px 90px; display: flex; flex-direction: column; gap: 20px; }
+
+  h1,h2,h3,h4 { margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(1.85rem,4.4vw,2.7rem); font-weight: 700; letter-spacing: -.03em; line-height: 1.06; }
+  h2 { font-size: clamp(1.25rem,2.7vw,1.6rem); font-weight: 700; letter-spacing: -.022em; }
+  h3 { font-size: 1.02rem; font-weight: 655; letter-spacing: -.012em; }
+  h4 { font-family: var(--mono); font-size: .655rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  p { margin: 0; }
+  strong, b { font-weight: 650; color: var(--ink); }
+  .eyebrow { font-family: var(--mono); font-size: .67rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+  .lede { font-size: clamp(1rem,2vw,1.13rem); line-height: 1.5; color: var(--ink-2); max-width: 68ch; }
+  .sub { font-size: .92rem; color: var(--ink-2); }
+  .tiny { font-size: .8rem; color: var(--muted); line-height: 1.45; }
+  code, .mono { font-family: var(--mono); }
+  code { font-size: .845em; background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; padding: .05em .3em; }
+  ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 5px; font-size: .9rem; }
+  ul li::marker { color: var(--rule-hi); }
+
+  .chip { display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:.615rem; font-weight:600;
+          letter-spacing:.09em; text-transform:uppercase; padding:2px 7px; border-radius:3px; white-space:nowrap; border:1px solid transparent; }
+  .k-fn   { background:var(--fn-soft); color:var(--fn); border-color:var(--fn); }
+  .k-tech { background:var(--tech-soft); color:var(--tech); border-color:var(--tech); }
+  .k-good { background:var(--good-soft); color:var(--good); border-color:var(--good); }
+  .k-warn { background:var(--warn-soft); color:var(--warn); border-color:var(--warn); }
+  .k-crit { background:var(--crit-soft); color:var(--crit); border-color:var(--crit); }
+  .k-flat { background:var(--panel); color:var(--ink-2); border-color:var(--rule-hi); }
+  .chiprow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+
+  .card { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; }
+
+  /* ---- controls ---- */
+  .btn {
+    font-size: .84rem; font-weight: 620; letter-spacing: -.005em;
+    padding: 7px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--rule-hi); background: var(--card); color: var(--ink-2);
+    white-space: nowrap; transition: background .12s, border-color .12s, transform .08s;
+  }
+  .btn:hover { background: var(--panel); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.run { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.run:hover { filter: brightness(1.08); background: var(--accent); }
+  .btn.ok { background: var(--good); border-color: var(--good); color: #fff; }
+  .btn.ok:hover { filter: brightness(1.08); background: var(--good); }
+  .btn.no { border-color: var(--crit); color: var(--crit); }
+  .btn.no:hover { background: var(--crit-soft); }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; }
+  .btn.sm { font-size: .78rem; padding: 4px 10px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--rule-hi); border-radius: 6px; overflow: hidden; }
+  .seg button {
+    font-size: .78rem; font-weight: 600; padding: 5px 12px; cursor: pointer;
+    background: var(--card); color: var(--muted); border: none; border-left: 1px solid var(--rule);
+  }
+  .seg button:first-child { border-left: none; }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* ---- top bar ---- */
+  .topbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:12px 16px; border-bottom:1px solid var(--rule); }
+  .brand { font-weight:680; letter-spacing:-.015em; }
+  .spacer { flex:1; }
+
+  .strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); background:var(--panel); border-bottom:1px solid var(--rule); }
+  .strip .cell { padding:10px 15px; border-left:1px solid var(--rule); }
+  .strip .cell:first-child { border-left:none; }
+  .strip .k { font-family:var(--mono); font-size:.6rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .strip .v { font-size:1.28rem; font-weight:700; letter-spacing:-.025em; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .strip .v.acc { color:var(--accent); } .strip .v.ok { color:var(--good); } .strip .v.bad { color:var(--crit); }
+
+  /* ---- scene tabs ---- */
+  .scenes { display:flex; flex-wrap:wrap; gap:6px; padding:12px 16px; border-bottom:1px solid var(--rule); }
+  .scene-tab {
+    display:flex; flex-direction:column; gap:1px; align-items:flex-start;
+    padding:7px 13px; border-radius:6px; cursor:pointer; text-align:left;
+    border:1px solid var(--rule); background:var(--card);
+  }
+  .scene-tab:hover { background:var(--panel); }
+  .scene-tab:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .scene-tab[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent); }
+  .scene-tab .st { font-size:.87rem; font-weight:640; letter-spacing:-.01em; }
+  .scene-tab[aria-pressed="true"] .st { color:var(--accent); }
+  .scene-tab .sd { font-family:var(--mono); font-size:.63rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+
+  /* ---- stage ---- */
+  .stage { display:grid; grid-template-columns:1fr; }
+  @media (min-width:1000px) { .stage.both { grid-template-columns:1fr 1fr; } }
+  .pane { padding:16px; display:flex; flex-direction:column; gap:13px; min-width:0; }
+  .pane + .pane { border-top:1px solid var(--rule); }
+  @media (min-width:1000px) { .stage.both .pane + .pane { border-top:none; border-left:1px solid var(--rule); } }
+  .pane-hd { display:flex; align-items:center; gap:9px; padding-bottom:9px; border-bottom:1px solid var(--rule); }
+  .pane.fn .pane-hd h4 { color:var(--fn); }
+  .pane.tech .pane-hd h4 { color:var(--tech); }
+  .pane[hidden] { display:none; }
+
+  /* ---- frame viewer ---- */
+  .viewer { position:relative; border-radius:5px; overflow:hidden; background:#2b3236; line-height:0; }
+  .viewer canvas { display:block; width:100%; height:auto; }
+  .viewer .lay { position:absolute; inset:0; }
+  .burn { position:absolute; font-family:var(--mono); font-size:.6rem; color:#EAEFF1; background:rgba(12,16,18,.74);
+          padding:1px 5px; border-radius:2px; letter-spacing:.04em; line-height:1.55; z-index:4; }
+  .burn.tl{top:6px;left:6px} .burn.br{bottom:6px;right:6px} .burn.bl{bottom:6px;left:6px}
+  .vtag { position:absolute; top:6px; right:6px; z-index:4; font-family:var(--mono); font-size:.6rem; font-weight:700;
+          letter-spacing:.08em; text-transform:uppercase; padding:2px 7px; border-radius:2px; background:rgba(12,16,18,.74); color:#C6D0D5; }
+  .scanline { position:absolute; left:0; right:0; height:3px; z-index:5;
+              background:linear-gradient(90deg,transparent,#4EC3CC,transparent); box-shadow:0 0 14px 3px rgba(78,195,204,.55);
+              opacity:0; }
+  .scanning .scanline { opacity:1; animation:scan 1s cubic-bezier(.5,0,.5,1) 1 forwards; }
+  @keyframes scan { from { top:0 } to { top:100% } }
+  @media (prefers-reduced-motion: reduce) { .scanning .scanline { animation-duration:.01s } }
+
+  .vcontrols { display:flex; flex-wrap:wrap; align-items:center; gap:9px 12px; }
+  .slider { display:flex; align-items:center; gap:8px; flex:1 1 190px; min-width:150px; }
+  .slider input[type=range] { flex:1; min-width:90px; accent-color:var(--accent); }
+  .slider .lbl { font-family:var(--mono); font-size:.63rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+
+  /* ---- finding card ---- */
+  .finding { border:1px solid var(--rule); border-radius:6px; padding:13px 15px; display:flex; flex-direction:column; gap:9px; background:var(--panel); }
+  .finding.crit { border-left:3px solid var(--crit); }
+  .finding.warn { border-left:3px solid var(--warn); }
+  .finding.good { border-left:3px solid var(--good); }
+  .finding .ttl { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
+  .finding .ttl .t { font-weight:655; letter-spacing:-.012em; }
+  .cap { font-size:.97rem; line-height:1.45; color:var(--ink); }
+  .conf { display:flex; align-items:center; gap:9px; }
+  .bar { flex:1; max-width:170px; height:6px; border-radius:3px; background:var(--panel-2); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--accent); width:0; transition:width .5s ease; }
+  .conf .pc { font-family:var(--mono); font-size:.73rem; font-weight:650; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .acts { display:flex; flex-wrap:wrap; gap:7px; }
+
+  .empty { border:1px dashed var(--rule-hi); border-radius:6px; padding:22px 16px; text-align:center; color:var(--muted); font-size:.9rem; }
+
+  /* ---- pipeline ---- */
+  .pipe { display:flex; flex-direction:column; gap:0; border:1px solid var(--rule); border-radius:6px; overflow:hidden; }
+  .pst { display:grid; grid-template-columns:26px 1fr auto; gap:11px; align-items:center; padding:9px 12px; background:var(--card); }
+  .pst + .pst { border-top:1px solid var(--rule); }
+  .pst .ic { width:20px; height:20px; border-radius:50%; border:2px solid var(--rule-hi); display:grid; place-items:center;
+             font-family:var(--mono); font-size:.6rem; font-weight:700; color:var(--muted); }
+  .pst .nm { font-size:.885rem; font-weight:600; letter-spacing:-.008em; }
+  .pst .sub2 { font-family:var(--mono); font-size:.66rem; color:var(--muted); letter-spacing:.03em; }
+  .pst .rt { font-family:var(--mono); font-size:.7rem; color:var(--muted); font-variant-numeric:tabular-nums; text-align:right; }
+  .pst[data-state="run"] { background:var(--accent-soft); }
+  .pst[data-state="run"] .ic { border-color:var(--accent); color:var(--accent); animation:pulse 1s infinite; }
+  .pst[data-state="done"] .ic { border-color:var(--good); background:var(--good); color:#fff; }
+  .pst[data-state="done"] .rt { color:var(--ink-2); }
+  .pst[data-state="skip"] { opacity:.5; }
+  .pst[data-state="skip"] .rt { font-style:italic; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+  @media (prefers-reduced-motion: reduce) { .pst[data-state="run"] .ic { animation:none } }
+
+  /* ---- metrics ---- */
+  .tw { overflow-x:auto; border:1px solid var(--rule); border-radius:6px; }
+  table { border-collapse:collapse; width:100%; font-size:.855rem; font-variant-numeric:tabular-nums; }
+  th,td { text-align:left; padding:7px 12px; border-bottom:1px solid var(--rule); }
+  th { font-family:var(--mono); font-size:.615rem; font-weight:600; letter-spacing:.11em; text-transform:uppercase;
+       color:var(--muted); background:var(--panel); white-space:nowrap; }
+  tr:last-child td { border-bottom:none; }
+  td.m { font-family:var(--mono); font-size:.79rem; }
+  td.r { text-align:right; font-family:var(--mono); font-size:.79rem; white-space:nowrap; }
+  td .hl { color:var(--accent); font-weight:650; }
+
+  .json { background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:11px 13px;
+          font-family:var(--mono); font-size:.7rem; line-height:1.65; overflow-x:auto; white-space:pre; color:var(--ink-2); margin:0; }
+  .json .jk{color:var(--accent)} .json .js{color:var(--good)} .json .jn{color:var(--warn)} .json .jc{color:var(--muted)}
+
+  .box { background:var(--panel); border:1px solid var(--rule); border-radius:6px; padding:13px 15px; display:flex; flex-direction:column; gap:7px; }
+  .box p { font-size:.885rem; color:var(--ink-2); }
+  .call { border:1px solid var(--rule); border-left:3px solid var(--accent); border-radius:0 6px 6px 0;
+          background:var(--panel); padding:14px 17px; display:flex; flex-direction:column; gap:7px; }
+  .call p { font-size:.9rem; color:var(--ink-2); }
+  .call.warn { border-left-color:var(--warn); }
+  .call.tech { border-left-color:var(--tech); }
+
+  .spark { display:flex; align-items:center; gap:10px; }
+  .spark .lbl { font-family:var(--mono); font-size:.645rem; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+  .spark .val { font-family:var(--mono); font-size:.79rem; font-weight:650; color:var(--ink); font-variant-numeric:tabular-nums; }
+
+  .g2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(255px,1fr)); gap:14px; }
+  .g3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(195px,1fr)); gap:13px; }
+
+  .meta { display:flex; flex-wrap:wrap; gap:6px 22px; font-family:var(--mono); font-size:.68rem;
+          letter-spacing:.07em; text-transform:uppercase; color:var(--muted); border-top:1px solid var(--rule); padding-top:14px; }
+  .meta b { color:var(--ink-2); font-weight:600; }
+  footer { text-align:center; font-family:var(--mono); font-size:.67rem; letter-spacing:.1em; text-transform:uppercase;
+           color:var(--muted); border-top:1px solid var(--rule); padding-top:18px; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header style="display:flex;flex-direction:column;gap:16px">
+    <p class="eyebrow">Storage&nbsp;Defender &middot; Vision MVP</p>
+    <h1>Vision MVP Prototype</h1>
+    <p class="lede">Four use cases, running end to end. Pick a scene, press <strong>Run vision analysis</strong>, and watch the pipeline execute. The left pane is what an operator sees; the right pane is the machinery underneath.</p>
+    <div class="call tech">
+      <h4>What is real here, and what is not</h4>
+      <p><strong>Real and computed live in your browser:</strong> the frame differencing, thresholding, connected-component region analysis, every bounding box and pixel count, and the crack width measurement against the scale card. Change the threshold slider and the detections genuinely recompute.</p>
+      <p><strong>Simulated:</strong> the natural-language caption &mdash; a real vision-language model call produces that in production &mdash; and the cost figures, which are arithmetic from published token rates. Both are labelled <span class="chip k-warn">simulated</span> in the interface.</p>
+    </div>
+    <div class="meta">
+      <span><b>File</b> &nbsp;04-cv-prototype.html &mdash; standalone, editable</span>
+      <span><b>Deps</b> &nbsp;none</span>
+      <span><b>Frames</b> &nbsp;procedurally drawn, not real captures</span>
+    </div>
+  </header>
+
+  <!-- ================= APP ================= -->
+  <div class="card" style="overflow:hidden">
+
+    <div class="topbar">
+      <span class="brand">Vision Review</span>
+      <span class="chip k-flat">Sunnyvale &middot; SD-0142</span>
+      <span class="spacer"></span>
+      <span class="sr" id="viewLabel">Pane visibility</span>
+      <div class="seg" role="group" aria-labelledby="viewLabel">
+        <button id="vBoth" aria-pressed="true">Both</button>
+        <button id="vFn"   aria-pressed="false">Functional</button>
+        <button id="vTech" aria-pressed="false">Technical</button>
+      </div>
+      <button class="btn sm" id="reset">Reset labels</button>
+    </div>
+
+    <div class="strip">
+      <div class="cell"><div class="k">Pending</div><div class="v acc" id="mPending">4</div></div>
+      <div class="cell"><div class="k">Labelled</div><div class="v" id="mLabelled">0</div></div>
+      <div class="cell"><div class="k">Confirmed</div><div class="v ok" id="mConf">0</div></div>
+      <div class="cell"><div class="k">Rejected</div><div class="v bad" id="mRej">0</div></div>
+      <div class="cell"><div class="k">Precision</div><div class="v" id="mPrec">&mdash;</div></div>
+      <div class="cell"><div class="k">Model spend</div><div class="v" id="mSpend">$0.0000</div></div>
+    </div>
+
+    <div class="scenes" role="group" aria-label="Use case">
+      <button class="scene-tab" data-scene="water"    aria-pressed="true">
+        <span class="st">Standing water</span><span class="sd">frame diff &middot; aisle C</span></button>
+      <button class="scene-tab" data-scene="motion"   aria-pressed="false">
+        <span class="st">After-hours motion</span><span class="sd">frame diff &middot; gate</span></button>
+      <button class="scene-tab" data-scene="overlock" aria-pressed="false">
+        <span class="st">Overlock check</span><span class="sd">roi diff &middot; unit 214</span></button>
+      <button class="scene-tab" data-scene="crack"    aria-pressed="false">
+        <span class="st">Crack measurement</span><span class="sd">morphology &middot; phone photo</span></button>
+    </div>
+
+    <div class="stage both" id="stage">
+
+      <!-- ---------- FUNCTIONAL ---------- -->
+      <section class="pane fn" id="paneFn">
+        <div class="pane-hd">
+          <h4>Functional &mdash; what the operator sees</h4>
+          <span class="spacer"></span>
+          <span class="chip k-fn" id="fnKind">Review board</span>
+        </div>
+
+        <div class="viewer" id="viewer">
+          <canvas id="cvsBase" width="480" height="270" aria-label="Baseline frame"></canvas>
+          <canvas class="lay" id="cvsCur"  width="480" height="270" aria-label="Current frame"></canvas>
+          <canvas class="lay" id="cvsOv"   width="480" height="270" aria-label="Detection overlay"></canvas>
+          <span class="burn tl" id="burnCam">VC100A0AED</span>
+          <span class="burn br" id="burnTs">2026-08-14 03:14:11</span>
+          <span class="vtag" id="vTag">Current</span>
+          <div class="scanline"></div>
+        </div>
+
+        <div class="vcontrols">
+          <div class="slider">
+            <span class="lbl">Base</span>
+            <input type="range" id="blend" min="0" max="100" value="100" aria-label="Blend baseline to current">
+            <span class="lbl">Now</span>
+          </div>
+          <div class="seg" role="group" aria-label="Overlay">
+            <button id="ovBox"  aria-pressed="true">Boxes</button>
+            <button id="ovHeat" aria-pressed="false">Diff map</button>
+            <button id="ovOff"  aria-pressed="false">Off</button>
+          </div>
+        </div>
+
+        <button class="btn run" id="run" style="align-self:flex-start">Run vision analysis</button>
+
+        <div id="fnOut">
+          <div class="empty">No finding yet &mdash; run the analysis.</div>
+        </div>
+      </section>
+
+      <!-- ---------- TECHNICAL ---------- -->
+      <section class="pane tech" id="paneTech">
+        <div class="pane-hd">
+          <h4>Technical &mdash; what runs underneath</h4>
+          <span class="spacer"></span>
+          <span class="chip k-tech" id="techKind">4-stage cascade</span>
+        </div>
+
+        <div>
+          <h4 style="margin-bottom:7px">Pipeline</h4>
+          <div class="pipe" id="pipe"></div>
+        </div>
+
+        <div>
+          <h4 style="margin-bottom:7px">Computed measurements <span class="chip k-good">real</span></h4>
+          <div class="tw"><table><tbody id="metrics">
+            <tr><td colspan="2" style="color:var(--muted);font-size:.87rem">Run the analysis to populate.</td></tr>
+          </tbody></table></div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <h4>Eagle Eye calls</h4>
+          </div>
+          <div class="tw"><table><tbody id="apis"></tbody></table></div>
+        </div>
+
+        <div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:7px">
+            <h4>Model output</h4>
+            <span class="chip k-warn" id="simTag">caption simulated</span>
+          </div>
+          <pre class="json" id="json">// awaiting run</pre>
+        </div>
+
+        <div id="techExtra"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ================= SPEC ================= -->
+  <section style="display:flex;flex-direction:column;gap:15px">
+    <div style="border-top:2px solid var(--ink);padding-top:15px">
+      <h2 id="specTitle">Specification</h2>
+    </div>
+    <div class="g2" id="spec"></div>
+  </section>
+
+  <!-- ================= IS IT CV? ================= -->
+  <section style="display:flex;flex-direction:column;gap:15px">
+    <div style="border-top:2px solid var(--ink);padding-top:15px">
+      <h2>Which of these is genuinely computer vision?</h2>
+    </div>
+    <p class="sub" style="max-width:76ch">Worth being precise before this is presented. Several capabilities on the wider list are <strong>platform events we simply aren't consuming yet</strong> &mdash; real value, fast to ship, but not our computer vision. Calling them CV invites one question &mdash; <em>&ldquo;so what model did you build?&rdquo;</em> &mdash; that the answer cannot survive.</p>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Capability</th><th>Is it CV?</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Crack measurement</b></td>
+            <td><span class="chip k-good">Pure CV</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">A width in millimetres exists only in pixels, calibrated against a scale reference. No sensor, PMS field or platform event can produce it. <b>The strongest CV claim we have.</b></td>
+          </tr>
+          <tr>
+            <td><b>Standing water &amp; condition</b></td>
+            <td><span class="chip k-good">Pure CV</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">A water sensor gives a binary trip at one point on the floor. The extent, the location and which door rows sit in its path come only from pixels.</td>
+          </tr>
+          <tr>
+            <td><b>Overlock verification</b></td>
+            <td><span class="chip k-good">Pure CV</span> <span class="chip k-flat">+ our data</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">&ldquo;Is a padlock physically on this hasp?&rdquo; has no other source anywhere in the company. The PMS supplies delinquency; only a camera supplies the lock.</td>
+          </tr>
+          <tr>
+            <td><b>Vacant-unit-occupied</b></td>
+            <td><span class="chip k-good">Pure CV</span> <span class="chip k-flat">+ our data</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">Same door-state read as overlock. The PMS supplies &ldquo;this should be empty&rdquo;; the camera contradicts it.</td>
+          </tr>
+          <tr>
+            <td><b>Move-in / move-out record</b></td>
+            <td><span class="chip k-good">Pure CV</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">A dated visual record of unit condition. Purely a pixels artefact, and the easiest one to explain to a customer.</td>
+          </tr>
+          <tr>
+            <td><b>Site condition score</b></td>
+            <td><span class="chip k-good">Pure CV</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">Cleanliness, clutter, landscaping and signage are visual judgements with no structured equivalent.</td>
+          </tr>
+          <tr>
+            <td><b>Incident scene caption</b></td>
+            <td><span class="chip k-warn">Partly CV</span></td>
+            <td style="font-size:.85rem;color:var(--ink-2)">The platform already classifies person and vehicle for free. Our CV adds the <em>relational</em> read &mdash; carrying boxes, moving away from the gate, gate closed. Real CV, but say what half is ours.</td>
+          </tr>
+          <tr>
+            <td>Camera tampering</td>
+            <td><span class="chip k-crit">Not ours</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Platform event. Subscribe and route. High value, zero CV effort.</td>
+          </tr>
+          <tr>
+            <td>Loitering, intrusion, line crossing</td>
+            <td><span class="chip k-crit">Not ours</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Platform events with configurable thresholds and zones.</td>
+          </tr>
+          <tr>
+            <td>Vehicle overstay, visit dwell</td>
+            <td><span class="chip k-crit">Not ours</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Plate reads plus a native rule. No model involved on our side.</td>
+          </tr>
+          <tr>
+            <td>PPE compliance</td>
+            <td><span class="chip k-crit">Not ours</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Helmet and vest already arrive in the person-attribute schema.</td>
+          </tr>
+          <tr>
+            <td>Break-in by sound</td>
+            <td><span class="chip k-crit">Not CV</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Audio classification with decibels. Excellent signal &mdash; but audio, not vision.</td>
+          </tr>
+          <tr>
+            <td>Thermal anomaly</td>
+            <td><span class="chip k-crit">Not CV</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Numeric temperature readings via a data schema. Sensor telemetry.</td>
+          </tr>
+          <tr>
+            <td>Traffic counting, camera health</td>
+            <td><span class="chip k-crit">Not CV</span></td>
+            <td style="font-size:.85rem;color:var(--muted)">Counting analytics and device status events.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="g2">
+      <div class="box" style="border-left:3px solid var(--good)">
+        <div class="chiprow"><span class="chip k-good">Say this today</span></div>
+        <p><b>&ldquo;We have four computer vision use cases, and this prototype runs all four.&rdquo;</b></p>
+        <ul>
+          <li><b>Crack measurement</b> &mdash; calibrated measurement from a technician photo</li>
+          <li><b>Standing water and condition</b> &mdash; temporal change detection per camera</li>
+          <li><b>Overlock verification</b> &mdash; presence check joined to delinquency</li>
+          <li><b>Incident scene captioning</b> &mdash; relational scene reading on a live incident</li>
+        </ul>
+        <p class="tiny">All four are demonstrable in the prototype above, with the detection geometry computed rather than asserted. That is a defensible claim in front of a technical audience.</p>
+      </div>
+      <div class="box" style="border-left:3px solid var(--crit)">
+        <div class="chiprow"><span class="chip k-crit">Don't say this</span></div>
+        <p><b>Don't fold tampering, loitering, PPE, audio or thermal into the CV story.</b></p>
+        <p>They are the strongest quick wins in the whole programme &mdash; but they belong to a different, equally good headline: <em>&ldquo;we already pay for roughly a dozen detection capabilities we don't yet consume, and switching them on is days of integration, not months of modelling.&rdquo;</em></p>
+        <p class="tiny">Two clean stories beat one inflated one. The integration story needs no precision number and ships faster; the CV story is where the defensible product sits. Presenting them separately means neither undermines the other under questioning.</p>
+      </div>
+    </div>
+
+    <div class="call">
+      <h4>The one-line version</h4>
+      <p><strong>CV is load-bearing wherever the answer exists only in pixels</strong> &mdash; a crack width, the extent of a puddle, whether a padlock is physically on a hasp, what a person in frame is actually doing. Wherever the platform already emits a structured event, our contribution is the <em>join and the routing</em>, not the vision. Both are worth funding; only the first is computer vision.</p>
+    </div>
+  </section>
+
+  <!-- ================= BUILD ================= -->
+  <section style="display:flex;flex-direction:column;gap:15px">
+    <div style="border-top:2px solid var(--ink);padding-top:15px">
+      <h2>From prototype to production</h2>
+    </div>
+    <p class="sub" style="max-width:74ch">The algorithm in this page is the real Stage&nbsp;1 filter. What production adds is the model call, the data joins, and the places a finding can land.</p>
+    <div class="g3">
+      <div class="box">
+        <h4>Keep as-is</h4>
+        <ul>
+          <li>Frame differencing and thresholding</li>
+          <li>Connected-component region analysis</li>
+          <li>Minimum-region filter that rejects sensor noise</li>
+          <li>Crack measurement against a scale reference</li>
+          <li>The confirm / reject / unsure labelling loop</li>
+        </ul>
+        <p class="tiny">This is the cheap gate that keeps 85% of frames away from a paid model call.</p>
+      </div>
+      <div class="box">
+        <h4>Replace with the real thing</h4>
+        <ul>
+          <li>Procedural frames &rarr; Eagle Eye media endpoints</li>
+          <li>Templated caption &rarr; Vertex AI vision call, structured JSON out</li>
+          <li>Hard-coded context &rarr; BigQuery joins to PMS and sensor history</li>
+          <li>In-memory labels &rarr; append-only <code>sd_vision.labels</code></li>
+          <li>Estimated cost &rarr; measured token usage per call</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h4>Add for production</h4>
+        <ul>
+          <li>Camera-to-door-row map (the real prerequisite)</li>
+          <li>Baseline frame index per camera and hour</li>
+          <li>Task creation via one authenticated mutation</li>
+          <li>Cloud Scheduler trigger, per-facility local time</li>
+          <li>Per-organisation spend quota and audit log</li>
+        </ul>
+      </div>
+    </div>
+    <div class="call warn">
+      <h4>The honest limitation, restated</h4>
+      <p>Scene four measures a crack because the lens is 40&nbsp;cm from the wall and a scale card is in frame. A ceiling-mounted camera at twenty feet cannot do this &mdash; a hairline crack is one to three pixels there, infrared-lit at night. Fixed cameras do coarse, wide-area work: water, obstruction, door state, debris. Fine structural inspection needs a technician's phone, and that path reuses the same pipeline.</p>
+    </div>
+  </section>
+
+  <footer>Vision MVP Prototype &middot; detection computed in-browser &middot; captions and costs simulated &middot; 14 Aug 2026</footer>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   0. Utilities
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/** Deterministic PRNG so baseline and current share identical texture. */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* =========================================================
+   1. Scene renderers — procedural frames, Canvas 2D
+   Baseline and current differ ONLY in the intended change,
+   plus a little deliberate sensor noise so the noise-rejection
+   step has something real to reject.
+   ========================================================= */
+
+function sensorNoise(ctx, W, H, seed, amount) {
+  const rnd = mulberry32(seed);
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (rnd() - 0.5) * amount;
+    d[i] = clamp(d[i] + n, 0, 255);
+    d[i + 1] = clamp(d[i + 1] + n, 0, 255);
+    d[i + 2] = clamp(d[i + 2] + n, 0, 255);
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function drawDoorRow(ctx, W, H, o) {
+  ctx.fillStyle = "#3B4348"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#2C3337"; ctx.fillRect(0, 0, W, H * 0.145);
+  ctx.fillStyle = "#232A2D"; ctx.fillRect(0, H * 0.145, W, 3);
+  ctx.fillStyle = "#4B5459"; ctx.fillRect(0, H * 0.73, W, H * 0.27);
+  ctx.fillStyle = "#394145"; ctx.fillRect(0, H * 0.73, W, 3);
+
+  // ceiling strip lights
+  ctx.fillStyle = "#5C666B";
+  for (let i = 0; i < 3; i++) ctx.fillRect(W * (0.19 + i * 0.265), H * 0.055, W * 0.105, 7);
+
+  // doors with slats
+  const n = 4, pad = W * 0.028, dw = (W - pad * (n + 1)) / n;
+  const dy = H * 0.222, dh = H * 0.508;
+  for (let i = 0; i < n; i++) {
+    const x = pad + i * (dw + pad);
+    ctx.fillStyle = "#5B666C"; ctx.fillRect(x, dy, dw, dh);
+    ctx.fillStyle = "#4A5359";
+    for (let y = dy + 6; y < dy + dh; y += 7) ctx.fillRect(x, y, dw, 1.5);
+    ctx.strokeStyle = "#3E474C"; ctx.lineWidth = 3;
+    ctx.strokeRect(x + 1.5, dy + 1.5, dw - 3, dh - 3);
+    ctx.fillStyle = "#394146";
+    ctx.fillRect(x + dw / 2 - 6, dy + dh - 30, 12, 17);
+  }
+
+  if (o.stain) {
+    const g = ctx.createLinearGradient(0, dy, 0, dy + dh);
+    g.addColorStop(0, "rgba(110,97,82,.85)"); g.addColorStop(1, "rgba(138,124,106,.10)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.53, dy);
+    ctx.quadraticCurveTo(W * 0.55, dy + dh * 0.5, W * 0.525, dy + dh * 0.82);
+    ctx.quadraticCurveTo(W * 0.585, dy + dh * 0.86, W * 0.615, dy + dh * 0.7);
+    ctx.quadraticCurveTo(W * 0.64, dy + dh * 0.3, W * 0.615, dy);
+    ctx.closePath(); ctx.fill();
+  }
+
+  if (o.water) {
+    const g = ctx.createLinearGradient(0, H * 0.78, 0, H);
+    g.addColorStop(0, "rgba(127,166,184,.88)"); g.addColorStop(1, "rgba(78,113,131,.96)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.30, H);
+    ctx.quadraticCurveTo(W * 0.275, H * 0.845, W * 0.40, H * 0.795);
+    ctx.quadraticCurveTo(W * 0.57, H * 0.745, W * 0.70, H * 0.805);
+    ctx.quadraticCurveTo(W * 0.82, H * 0.862, W * 0.79, H);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(207,226,234,.62)"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(W * 0.37, H * 0.888);
+    ctx.quadraticCurveTo(W * 0.47, H * 0.845, W * 0.58, H * 0.868); ctx.stroke();
+    ctx.lineWidth = 1.8; ctx.strokeStyle = "rgba(207,226,234,.42)";
+    ctx.beginPath(); ctx.moveTo(W * 0.47, H * 0.955);
+    ctx.quadraticCurveTo(W * 0.58, H * 0.922, W * 0.675, H * 0.945); ctx.stroke();
+  }
+}
+
+function drawGate(ctx, W, H, o) {
+  ctx.fillStyle = "#242A2E"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#31383C"; ctx.fillRect(0, H * 0.667, W, H * 0.333);
+  ctx.fillStyle = "#1E2427"; ctx.fillRect(0, H * 0.661, W, 3);
+
+  ctx.strokeStyle = "#4E585E"; ctx.lineWidth = 4;
+  for (let i = 0; i < 6; i++) {
+    const x = W * (0.612 + i * 0.0625);
+    ctx.beginPath(); ctx.moveTo(x, H * 0.289); ctx.lineTo(x, H * 0.711); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(W * 0.594, H * 0.311); ctx.lineTo(W * 0.95, H * 0.311);
+  ctx.moveTo(W * 0.594, H * 0.678); ctx.lineTo(W * 0.95, H * 0.678); ctx.stroke();
+
+  ctx.fillStyle = "rgba(62,70,75,.72)";
+  ctx.beginPath(); ctx.ellipse(W * 0.344, H * 0.733, W * 0.27, H * 0.133, 0, 0, Math.PI * 2); ctx.fill();
+
+  if (o.person) {
+    ctx.fillStyle = "#B9C3C8";
+    ctx.beginPath(); ctx.arc(W * 0.325, H * 0.389, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(W * 0.297, H * 0.45); ctx.lineTo(W * 0.353, H * 0.45);
+    ctx.lineTo(W * 0.366, H * 0.617); ctx.lineTo(W * 0.284, H * 0.617);
+    ctx.closePath(); ctx.fill();
+    ctx.fillRect(W * 0.30, H * 0.617, 10, 34);
+    ctx.fillRect(W * 0.331, H * 0.617, 10, 34);
+    // carried boxes
+    ctx.fillStyle = "#8E7A5C"; ctx.strokeStyle = "#6E5D45"; ctx.lineWidth = 2;
+    ctx.fillRect(W * 0.369, H * 0.478, 36, 26); ctx.strokeRect(W * 0.369, H * 0.478, 36, 26);
+    ctx.fillRect(W * 0.369, H * 0.378, 36, 26); ctx.strokeRect(W * 0.369, H * 0.378, 36, 26);
+  }
+}
+
+function drawDoorCrop(ctx, W, H, o) {
+  ctx.fillStyle = "#3B4348"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#4B5459"; ctx.fillRect(0, H * 0.833, W, H * 0.167);
+  const dx = W * 0.115, dw = W * 0.77, dy = H * 0.089, dh = H * 0.744;
+  ctx.fillStyle = "#5B666C"; ctx.fillRect(dx, dy, dw, dh);
+  ctx.fillStyle = "#4A5359";
+  for (let y = dy + 7; y < dy + dh; y += 9) ctx.fillRect(dx, y, dw, 2);
+  ctx.strokeStyle = "#3E474C"; ctx.lineWidth = 3; ctx.strokeRect(dx + 1.5, dy + 1.5, dw - 3, dh - 3);
+
+  // hasp
+  ctx.fillStyle = "#394146"; ctx.fillRect(W * 0.41, H * 0.578, W * 0.175, H * 0.144);
+  if (o.lock) {
+    ctx.fillStyle = "#C0392B"; ctx.fillRect(W * 0.425, H * 0.622, W * 0.15, H * 0.106);
+    ctx.strokeStyle = "#8E8E94"; ctx.lineWidth = 4; ctx.beginPath();
+    ctx.moveTo(W * 0.462, H * 0.622); ctx.lineTo(W * 0.462, H * 0.589);
+    ctx.arc(W * 0.50, H * 0.589, W * 0.0375, Math.PI, 0);
+    ctx.lineTo(W * 0.538, H * 0.622); ctx.stroke();
+    ctx.fillStyle = "#7E241B";
+    ctx.beginPath(); ctx.arc(W * 0.50, H * 0.672, 4, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.strokeStyle = "#2B3236"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(W * 0.50, H * 0.65, 7, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+function drawWall(ctx, W, H, o) {
+  // concrete base + deterministic aggregate speckle
+  ctx.fillStyle = "#8C8880"; ctx.fillRect(0, 0, W, H);
+  const rnd = mulberry32(7);
+  for (let i = 0; i < 1400; i++) {
+    const x = rnd() * W, y = rnd() * H, r = rnd() * 2.1 + 0.4;
+    const s = 118 + Math.floor(rnd() * 22);
+    ctx.fillStyle = `rgb(${s},${s - 4},${s - 12})`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // main crack — width scales with o.width
+  const pts = [[0.10, 0.02], [0.19, 0.20], [0.155, 0.36], [0.235, 0.53], [0.21, 0.68], [0.29, 0.845], [0.265, 0.99]];
+  ctx.strokeStyle = "#3A342C"; ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.lineWidth = o.width;
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(p[0] * W, p[1] * H) : ctx.moveTo(p[0] * W, p[1] * H));
+  ctx.stroke();
+
+  // lateral branches — kept near 45° deliberately. A near-horizontal branch
+  // would give a huge horizontal run and corrupt the width measurement; the
+  // measurement is also made robust to that (see measureCrack).
+  const br = [[[0.19, 0.20], [0.265, 0.325]], [[0.235, 0.53], [0.305, 0.645]], [[0.29, 0.845], [0.35, 0.945]]];
+  ctx.lineWidth = Math.max(1.6, o.width * 0.55);
+  for (let i = 0; i < o.branches && i < br.length; i++) {
+    ctx.beginPath();
+    ctx.moveTo(br[i][0][0] * W, br[i][0][1] * H);
+    ctx.lineTo(br[i][1][0] * W, br[i][1][1] * H);
+    ctx.stroke();
+  }
+
+  // 50 mm scale card — the calibration reference
+  const cw = W * 0.1875; // 90px at 480 => 50mm
+  ctx.fillStyle = "#EFE9DC"; ctx.fillRect(W * 0.70, H * 0.80, cw, H * 0.075);
+  ctx.fillStyle = "#2A2620";
+  ctx.font = "700 9px ui-monospace, monospace";
+  ctx.fillText("50 mm", W * 0.745, H * 0.851);
+  ctx.strokeStyle = "#2A2620"; ctx.lineWidth = 2;
+  ctx.strokeRect(W * 0.70, H * 0.80, cw, H * 0.075);
+  return { scalePx: cw, scaleMm: 50 };
+}
+
+/* =========================================================
+   2. Real computer vision
+   ========================================================= */
+
+/**
+ * Absolute frame difference → threshold → coarse grid →
+ * connected components (4-neighbour flood fill) → bounding boxes.
+ * Everything returned here is measured, not asserted.
+ */
+function detectChange(baseData, curData, W, H, opts) {
+  const thr = opts.threshold, CELL = opts.cell, MINCELLS = opts.minCells;
+  const gw = Math.ceil(W / CELL), gh = Math.ceil(H / CELL);
+  const cellHits = new Int32Array(gw * gh);
+  const heat = new Uint8ClampedArray(W * H);
+  let changedPx = 0;
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      // luminance difference — cheaper and steadier than per-channel
+      const lb = 0.299 * baseData[i] + 0.587 * baseData[i + 1] + 0.114 * baseData[i + 2];
+      const lc = 0.299 * curData[i]  + 0.587 * curData[i + 1]  + 0.114 * curData[i + 2];
+      const d = Math.abs(lc - lb);
+      heat[y * W + x] = d;
+      if (d >= thr) {
+        changedPx++;
+        cellHits[Math.floor(y / CELL) * gw + Math.floor(x / CELL)]++;
+      }
+    }
+  }
+
+  // a cell counts as changed when >35% of its pixels crossed the threshold
+  const need = CELL * CELL * 0.35;
+  const mask = new Uint8Array(gw * gh);
+  let cellsOn = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (cellHits[i] >= need) { mask[i] = 1; cellsOn++; }
+  }
+
+  // connected components, iterative stack (no recursion blowups)
+  const seen = new Uint8Array(gw * gh);
+  const regions = [];
+  for (let s = 0; s < mask.length; s++) {
+    if (!mask[s] || seen[s]) continue;
+    let minx = gw, miny = gh, maxx = -1, maxy = -1, count = 0;
+    const stack = [s]; seen[s] = 1;
+    while (stack.length) {
+      const p = stack.pop();
+      const px = p % gw, py = (p - px) / gw;
+      count++;
+      if (px < minx) minx = px; if (px > maxx) maxx = px;
+      if (py < miny) miny = py; if (py > maxy) maxy = py;
+      const nb = [];
+      if (px > 0)      nb.push(p - 1);
+      if (px < gw - 1) nb.push(p + 1);
+      if (py > 0)      nb.push(p - gw);
+      if (py < gh - 1) nb.push(p + gw);
+      for (const q of nb) if (mask[q] && !seen[q]) { seen[q] = 1; stack.push(q); }
+    }
+    regions.push({
+      cells: count,
+      x: minx * CELL, y: miny * CELL,
+      w: (maxx - minx + 1) * CELL, h: (maxy - miny + 1) * CELL
+    });
+  }
+
+  const kept = regions.filter(r => r.cells >= MINCELLS).sort((a, b) => b.cells - a.cells);
+  const frameCells = gw * gh;
+  return {
+    changedPx, changedPct: (changedPx / (W * H)) * 100,
+    grid: { gw, gh, cell: CELL, cellsOn, frameCells },
+    regionsFound: regions.length, regionsKept: kept.length,
+    rejectedAsNoise: regions.length - kept.length,
+    regions: kept, heat,
+    coveragePct: kept.reduce((a, r) => a + r.cells, 0) / frameCells * 100
+  };
+}
+
+/** ROI-restricted diff — presence/absence inside a known rectangle. */
+function detectRoi(baseData, curData, W, H, roi, thr) {
+  let changed = 0, total = 0;
+  for (let y = roi.y; y < roi.y + roi.h; y++) {
+    for (let x = roi.x; x < roi.x + roi.w; x++) {
+      const i = (y * W + x) * 4; total++;
+      const lb = 0.299 * baseData[i] + 0.587 * baseData[i + 1] + 0.114 * baseData[i + 2];
+      const lc = 0.299 * curData[i]  + 0.587 * curData[i + 1]  + 0.114 * curData[i + 2];
+      if (Math.abs(lc - lb) >= thr) changed++;
+    }
+  }
+  return { changed, total, pct: (changed / total) * 100 };
+}
+
+/**
+ * Crack measurement. Threshold dark pixels, then for every row
+ * take the longest horizontal run — that run in pixels, converted
+ * through the scale card, is the width in millimetres.
+ */
+function measureCrack(data, W, H, darkThr, scalePx, scaleMm, searchW) {
+  const mmPerPx = scaleMm / scalePx;
+  let rows = 0, totalDark = 0;
+  const runsPerRow = [];
+
+  for (let y = 0; y < H; y++) {
+    let run = 0, best = 0, segs = 0, inSeg = false;
+    for (let x = 0; x < searchW; x++) {
+      const i = (y * W + x) * 4;
+      const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      if (lum <= darkThr) {
+        totalDark++; run++;
+        if (!inSeg) { inSeg = true; segs++; }
+        if (run > best) best = run;
+      } else { run = 0; inSeg = false; }
+    }
+    runsPerRow.push({ y, best, segs });
+    if (best > 0) rows++;
+  }
+
+  /* Width must be robust. A raw max would be captured by the row that cuts
+     through a branch junction or a shallow-angle branch, reporting tens of
+     millimetres. So: consider only rows where the crack resolves to exactly
+     ONE dark segment, and take the 90th percentile of those. */
+  const single = runsPerRow.filter(r => r.segs === 1 && r.best > 0)
+                           .sort((a, b) => a.best - b.best);
+  let widthPx = 0, widthRow = -1;
+  if (single.length) {
+    const idx = Math.min(single.length - 1, Math.floor(single.length * 0.90));
+    widthPx = single[idx].best;
+    widthRow = single[idx].y;
+  }
+  const rawMax = runsPerRow.reduce((m, r) => r.best > m ? r.best : m, 0);
+
+  /* Branch count = number of contiguous row-groups that resolve into two or
+     more dark segments. Counting rows would over-count a single branch. */
+  let branches = 0, wasMulti = false;
+  for (const r of runsPerRow) {
+    const multi = r.segs >= 2;
+    if (multi && !wasMulti) branches++;
+    wasMulti = multi;
+  }
+  const branchRows = runsPerRow.filter(r => r.segs >= 2).length;
+
+  return {
+    widthPx, widthMm: widthPx * mmPerPx, widthRow,
+    rawMaxPx: rawMax, rawMaxMm: rawMax * mmPerPx,
+    singleSegRows: single.length,
+    lengthPx: rows, lengthMm: rows * mmPerPx,
+    darkPx: totalDark, mmPerPx, branches, branchRows
+  };
+}
+
+/* =========================================================
+   3. Scene configuration
+   ========================================================= */
+const SCENES = {
+  water: {
+    kind: "Review board", tech: "4-stage cascade",
+    W: 480, H: 270,
+    cam: "VC100A0AED", ts: "2026-08-14 03:14:11", baseTs: "2026-07-15 03:00:04",
+    algo: "frame difference",
+    drawBase: (c, W, H) => { drawDoorRow(c, W, H, { water: false, stain: false }); sensorNoise(c, W, H, 101, 46); },
+    drawCur:  (c, W, H) => { drawDoorRow(c, W, H, { water: true,  stain: true  }); sensorNoise(c, W, H, 202, 46); },
+    cv: { threshold: 26, cell: 8, minCells: 8 },
+    apis: [
+      ["GET /api/v3.0/events", "motion + region events for the camera"],
+      ["een.bestImageUrl.v1", "platform-chosen best frame, not our timestamp guess"],
+      ["GET /media/recordedImage.jpeg", "baseline frame, same camera, same hour, 30 d back"],
+      ["een.thermalCameraValueUpdate.v1", "temperature min/max/avg where a thermal camera exists"]
+    ],
+    model: { name: "claude-haiku-4-5", inRate: 1, outRate: 5, imgTok: 1600, imgs: 2, promptTok: 900, outTok: 260, batch: true },
+    escalate: { name: "claude-opus-5", inRate: 5, outRate: 25, imgTok: 4784, imgs: 2, promptTok: 900, outTok: 420 },
+    sensors: [
+      { lbl: "Humidity D-2211", val: "84% · 6 d rising", pts: "0,24 16,23 32,20 48,17 64,13 80,9 96,6 112,4", col: "var(--warn)" },
+      { lbl: "Water W-2214", val: "No trip", pts: "0,15 16,16 32,15 48,15 64,16 80,15 96,15 112,15", col: "var(--good)" }
+    ],
+    pms: "<b>7 occupied units</b> in rows 204–216, two climate-controlled. No open maintenance task on this zone. Last roof inspection logged 11 months ago.",
+    verdict(cv) {
+      const big = cv.regions[0];
+      const low = big && (big.y + big.h) > this.H * 0.66;
+      const sev = cv.coveragePct > 8 && low ? "crit" : cv.regionsKept ? "warn" : "good";
+      return {
+        type: cv.regionsKept ? "standing_water" : "no_change",
+        title: cv.regionsKept ? "Standing water — aisle C, row 200" : "No change against baseline",
+        sev,
+        conf: cv.regionsKept ? clamp(0.62 + cv.coveragePct * 0.028, 0, 0.97) : 0.91,
+        caption: cv.regionsKept
+          ? `Reflective pooling across roughly ${(big.w * 0.021).toFixed(1)} m of floor, absent in the baseline. Vertical staining on the wall above suggests ongoing ingress rather than a spill.`
+          : "Frame is materially identical to the baseline. No finding raised.",
+        action: cv.regionsKept ? "inspect_roof_drain" : "none"
+      };
+    },
+    spec: {
+      fn: ["Reviewer sees baseline and current side by side, same camera and hour",
+           "Severity, plain-language cause and affected unit count above the fold",
+           "Confirm / Reject / Unsure writes the label; Create task is a separate decision",
+           "Sensor panel states plainly whether each device supports or contradicts the finding"],
+      tech: ["Luminance diff, threshold 26/255, 8 px cells, 35% cell fill to count",
+             "Regions under 8 cells discarded as sensor noise",
+             "Escalates to the stronger model only when first-pass confidence < 0.75",
+             "Nightly batch, so 50% batch pricing applies to the whole sweep"]
+    }
+  },
+
+  motion: {
+    kind: "Incident detail", tech: "single-frame caption",
+    W: 480, H: 270,
+    cam: "VC100A0AED", ts: "2026-08-14 02:14:07", baseTs: "2026-08-14 02:09:00",
+    algo: "frame difference",
+    drawBase: (c, W, H) => { drawGate(c, W, H, { person: false }); sensorNoise(c, W, H, 303, 46); },
+    drawCur:  (c, W, H) => { drawGate(c, W, H, { person: true  }); sensorNoise(c, W, H, 404, 46); },
+    cv: { threshold: 24, cell: 8, minCells: 6 },
+    apis: [
+      ["een.motionDetectionEvent.v1", "the event we already ingest today"],
+      ["een.objectClassification.v1", "class + confidence — person, vehicle, weapon"],
+      ["een.personAttributes.v1", "clothing colour, helmet and vest detection"],
+      ["een.fullFrameImageUrlWithOverlay.v1", "bounding boxes burned into the frame"]
+    ],
+    model: { name: "claude-haiku-4-5", inRate: 1, outRate: 5, imgTok: 1600, imgs: 1, promptTok: 800, outTok: 180, batch: false },
+    escalate: null,
+    sensors: [],
+    pms: "Gate access log shows <b>no credential presented</b> in the preceding 20 minutes. Facility closed at 21:00. Nearest occupied unit row C, lease active since Mar 2026.",
+    verdict(cv) {
+      const r = cv.regions[0];
+      const tall = r ? r.h / r.w > 1.15 : false;
+      return {
+        type: cv.regionsKept ? "after_hours_person" : "no_subject",
+        title: cv.regionsKept ? "Person on foot — after hours" : "No subject detected",
+        sev: cv.regionsKept ? "warn" : "good",
+        conf: cv.regionsKept ? clamp(0.70 + cv.coveragePct * 0.05, 0, 0.96) : 0.88,
+        caption: cv.regionsKept
+          ? `One person on foot, no vehicle. ${tall ? "Upright human aspect ratio" : "Low wide subject"}, carrying what appear to be two boxes, moving away from the gate toward the interior. Gate closed and intact.`
+          : "Frame matches the pre-event baseline. Likely a lighting or insect trigger.",
+        action: cv.regionsKept ? "enrich_incident" : "none"
+      };
+    },
+    spec: {
+      fn: ["Caption lands as an event on the incident the operator already opened",
+           "Leads with the sentence that answers “do I dispatch?”",
+           "Latency and model shown in the header so a doubting operator can judge the source",
+           "Nothing else on the incident screen changes — timeline picks it up for free"],
+      tech: ["Baseline is the pre-event frame, five minutes earlier — not a 30-day baseline",
+             "Aspect ratio of the largest region separates upright human from vehicle or animal",
+             "Runs live, so no batch discount; still under a third of a cent per incident",
+             "No new queue and no new alert path — writes through the existing incident event"]
+    }
+  },
+
+  overlock: {
+    kind: "Overlock audit", tech: "roi presence check",
+    W: 240, H: 270,
+    cam: "VC100D7C55", ts: "2026-08-14 03:20:41", baseTs: "reference · lock fitted",
+    algo: "ROI difference",
+    drawBase: (c, W, H) => { drawDoorCrop(c, W, H, { lock: true  }); sensorNoise(c, W, H, 505, 34); },
+    drawCur:  (c, W, H) => { drawDoorCrop(c, W, H, { lock: false }); sensorNoise(c, W, H, 606, 34); },
+    cv: { threshold: 30, cell: 6, minCells: 5, roi: { x: 96, y: 150, w: 52, h: 48 } },
+    apis: [
+      ["een.croppedFrameImageUrl.v1", "object-scoped crop — one door, not twelve"],
+      ["een.motionInRegionDetectionEvent.v1", "region drawn over this door row specifically"],
+      ["GET /media/liveImage.jpeg", "on-demand live frame to re-check a single unit"],
+      ["GET /api/v3.0/locations/{id}/floors", "floor plans, to place the regions"]
+    ],
+    model: { name: "claude-haiku-4-5", inRate: 1, outRate: 5, imgTok: 800, imgs: 1, promptTok: 700, outTok: 120, batch: true },
+    escalate: { name: "claude-opus-5", inRate: 5, outRate: 25, imgTok: 2400, imgs: 2, promptTok: 700, outTok: 200 },
+    sensors: [],
+    pms: "Unit 214 — <b>41 days past due</b>. Overlock task T-4402 <b>marked complete on 9 Aug</b> by staff user 118. No move-out recorded. Balance $487.20.",
+    verdict(cv) {
+      const missing = cv.roi.pct > 12;
+      return {
+        type: missing ? "overlock_missing" : "overlock_verified",
+        title: missing ? "No overlock — unit 214" : "Overlock verified — unit 214",
+        sev: missing ? "crit" : "good",
+        conf: clamp(0.68 + Math.abs(cv.roi.pct - 12) * 0.012, 0, 0.96),
+        caption: missing
+          ? `Hasp region differs from the fitted-lock reference by ${cv.roi.pct.toFixed(1)}% of pixels. No lock body present. Task T-4402 was closed on 9 Aug — this is a closed-task discrepancy, not a pending job.`
+          : `Hasp region matches the fitted-lock reference within tolerance (${cv.roi.pct.toFixed(1)}% differing). Overlock present.`,
+        action: missing ? "reopen_task_and_flag_supervisor" : "none"
+      };
+    },
+    spec: {
+      fn: ["Grid of door crops per facility, reviewer scans for red rather than reading rows",
+           "Output is a facility compliance percentage the ops team is measured on",
+           "Surfaces the discrepancy, not just the state — “no lock AND task closed”",
+           "Crop is the privacy-safe artefact if this ever becomes tenant-facing"],
+      tech: ["Diff restricted to a 52×48 px hasp ROI, so door texture and lighting cannot trigger it",
+             "Reference is a fitted-lock crop of the same door, not a generic template",
+             "Threshold 30/255, verdict at >12% of ROI pixels differing",
+             "Joins to task history — the join is what turns detection into an audit"]
+    }
+  },
+
+  crack: {
+    kind: "Technician upload", tech: "morphology + calibration",
+    W: 480, H: 270,
+    cam: "IMG_4471 · 0.4 m", ts: "2026-08-14 09:41:02", baseTs: "2026-03-12 · 1.8 mm",
+    algo: "dark-pixel run-length",
+    drawBase: (c, W, H) => { drawWall(c, W, H, { width: 4.0, branches: 1 }); },
+    drawCur:  (c, W, H) => { drawWall(c, W, H, { width: 5.6, branches: 3 }); },
+    cv: { threshold: 26, cell: 8, minCells: 5, darkThr: 88, searchFrac: 0.62 },
+    apis: [
+      ["—", "no Eagle Eye call — this frame comes from a technician's phone"],
+      ["POST /tasks/{id}/files", "our existing task file attachment, unchanged"],
+      ["GET /cameras/{id}/ptz/position", "optional: PTZ preset tour for the fixed-camera variant"]
+    ],
+    model: { name: "claude-opus-5", inRate: 5, outRate: 25, imgTok: 4784, imgs: 1, promptTok: 1100, outTok: 520, batch: false, toolCalls: 3 },
+    escalate: null,
+    sensors: [],
+    pms: "Wall section <b>BLDG-C-W3</b>. Prior photo on file from 12 Mar 2026 — re-measured on this run rather than trusting the stored figure. Structural review last signed off Nov 2024.",
+    verdict(cv) {
+      const m = cv.crack;
+      const grew = cv.growthMm;
+      const sev = m.widthMm >= 3.0 ? "crit" : m.widthMm >= 1.5 ? "warn" : "good";
+      return {
+        type: "structural_crack",
+        title: `Vertical crack — ${m.widthMm.toFixed(1)} mm at widest`,
+        sev,
+        conf: 0.89,
+        caption: `Vertical crack measuring ${m.widthMm.toFixed(1)} mm at its widest point, running roughly ${(m.lengthMm / 1000).toFixed(2)} m from the ceiling joint downward with ${m.branches} lateral branch${m.branches === 1 ? "" : "es"}. Stepped pattern is consistent with differential settlement rather than shrinkage. Growth of ${grew > 0 ? "+" : ""}${grew.toFixed(1)} mm and ${cv.growthBr > 0 ? "+" : ""}${cv.growthBr} branch${Math.abs(cv.growthBr) === 1 ? "" : "es"} since the March visit, both measured from the archived photo.`,
+        action: sev === "crit" ? "escalate_structural_engineer" : "monitor_quarterly"
+      };
+    },
+    spec: {
+      fn: ["Technician photographs the surface from a task, assessment runs on upload",
+           "Capture UI requires the 50 mm scale card in frame — enforced, not documented",
+           "Change since the last visit is the headline, not the absolute width",
+           "Reuses the existing task attachment: no new bucket, path or permission model"],
+      tech: ["Dark-pixel threshold at 88/255, longest horizontal run per row gives width",
+             "Scale card of known 50 mm width calibrates pixels to millimetres",
+             "Branch count from rows resolving into two or more dark segments",
+             "Model gets crop and zoom tools and verifies its own reading — 3 tool calls"]
+    }
+  }
+};
+
+/* =========================================================
+   4. State + rendering
+   ========================================================= */
+const state = {
+  scene: "water",
+  view: "both",
+  overlay: "box",
+  blend: 100,
+  result: null,          // last CV result
+  verdict: null,
+  spend: 0,
+  labels: {}             // sceneKey -> "confirm" | "reject" | "unsure"
+};
+
+const cvsBase = $("cvsBase"), cvsCur = $("cvsCur"), cvsOv = $("cvsOv");
+const ctxBase = cvsBase.getContext("2d", { willReadFrequently: true });
+const ctxCur  = cvsCur.getContext("2d",  { willReadFrequently: true });
+const ctxOv   = cvsOv.getContext("2d");
+
+function renderScene() {
+  const S = SCENES[state.scene];
+  [cvsBase, cvsCur, cvsOv].forEach(c => { c.width = S.W; c.height = S.H; });
+  ctxBase.clearRect(0, 0, S.W, S.H); ctxCur.clearRect(0, 0, S.W, S.H); ctxOv.clearRect(0, 0, S.W, S.H);
+  S.drawBase(ctxBase, S.W, S.H);
+  S.drawCur(ctxCur, S.W, S.H);
+  $("burnCam").textContent = S.cam;
+  $("burnTs").textContent = S.ts;
+  $("fnKind").textContent = S.kind;
+  $("techKind").textContent = S.tech;
+  applyBlend();
+  paintApis(S);
+  paintSpec(S);
+  $("simTag").hidden = false;
+}
+
+function applyBlend() {
+  cvsCur.style.opacity = String(state.blend / 100);
+  $("vTag").textContent = state.blend > 60 ? "Current"
+    : state.blend < 40 ? "Baseline" : "Blend " + state.blend + "%";
+}
+
+/* ---- overlay painting ---- */
+function paintOverlay() {
+  const S = SCENES[state.scene];
+  ctxOv.clearRect(0, 0, S.W, S.H);
+  const r = state.result;
+  if (!r || state.overlay === "off") return;
+
+  if (state.overlay === "heat" && r.heat) {
+    const img = ctxOv.createImageData(S.W, S.H);
+    for (let i = 0; i < r.heat.length; i++) {
+      const v = r.heat[i], on = v >= S.cv.threshold;
+      const p = i * 4;
+      img.data[p]     = on ? 255 : 0;
+      img.data[p + 1] = on ? 190 : 0;
+      img.data[p + 2] = on ? 40  : 0;
+      img.data[p + 3] = on ? Math.min(215, 90 + v * 1.6) : 0;
+    }
+    ctxOv.putImageData(img, 0, 0);
+    return;
+  }
+
+  // boxes
+  ctxOv.lineWidth = 2.5; ctxOv.font = "700 10px ui-monospace, monospace";
+  (r.regions || []).forEach((g, i) => {
+    const col = i === 0 ? "#F0B429" : "#7FB3C8";
+    ctxOv.strokeStyle = col; ctxOv.strokeRect(g.x, g.y, g.w, g.h);
+    const lbl = `R${i + 1} ${g.cells}c`;
+    const tw = ctxOv.measureText(lbl).width + 8;
+    ctxOv.fillStyle = col;
+    ctxOv.fillRect(g.x, Math.max(0, g.y - 13), tw, 13);
+    ctxOv.fillStyle = "#1A1400";
+    ctxOv.fillText(lbl, g.x + 4, Math.max(9, g.y - 3.5));
+  });
+
+  if (r.roi) {
+    const q = SCENES[state.scene].cv.roi;
+    ctxOv.strokeStyle = r.roi.pct > 12 ? "#E74C3C" : "#2ECC71";
+    ctxOv.setLineDash([5, 4]); ctxOv.strokeRect(q.x, q.y, q.w, q.h); ctxOv.setLineDash([]);
+    ctxOv.fillStyle = ctxOv.strokeStyle;
+    const t = `ROI ${r.roi.pct.toFixed(1)}%`;
+    const tw = ctxOv.measureText(t).width + 8;
+    ctxOv.fillRect(q.x, Math.max(0, q.y - 13), tw, 13);
+    ctxOv.fillStyle = "#fff"; ctxOv.fillText(t, q.x + 4, Math.max(9, q.y - 3.5));
+  }
+
+  if (r.crack) {
+    const m = r.crack;
+    ctxOv.strokeStyle = "#E74C3C"; ctxOv.lineWidth = 2;
+    ctxOv.beginPath();
+    ctxOv.moveTo(0, m.widthRow); ctxOv.lineTo(S.W * 0.60, m.widthRow); ctxOv.stroke();
+    const t = `${m.widthMm.toFixed(1)} mm @ row ${m.widthRow}`;
+    const tw = ctxOv.measureText(t).width + 8;
+    ctxOv.fillStyle = "#E74C3C";
+    ctxOv.fillRect(S.W * 0.60, m.widthRow - 6.5, tw, 13);
+    ctxOv.fillStyle = "#fff"; ctxOv.fillText(t, S.W * 0.60 + 4, m.widthRow + 3.5);
+  }
+}
+
+/* ---- pipeline ---- */
+const STAGES = [
+  { id: "fetch",  nm: "Fetch frames",      sub: "EEN media endpoint" },
+  { id: "filter", nm: "Diff & threshold",  sub: "local, no model call" },
+  { id: "triage", nm: "Triage",            sub: "cheap vision model" },
+  { id: "adj",    nm: "Adjudicate",        sub: "escalation, if unsure" },
+  { id: "land",   nm: "Land & route",      sub: "BigQuery + task API" }
+];
+
+function paintPipe(states, timings) {
+  $("pipe").innerHTML = STAGES.map((s, i) => {
+    const st = states[s.id] || "idle";
+    const mark = st === "done" ? "✓" : st === "skip" ? "–" : String(i + 1);
+    const rt = timings[s.id] || "";
+    return `<div class="pst" data-state="${st}">
+      <div class="ic">${mark}</div>
+      <div><div class="nm">${s.nm}</div><div class="sub2">${s.sub}</div></div>
+      <div class="rt">${rt}</div>
+    </div>`;
+  }).join("");
+}
+paintPipe({}, {});
+
+/* ---- metrics table ---- */
+function paintMetrics(rows) {
+  $("metrics").innerHTML = rows.map(([k, v, hl]) =>
+    `<tr><td class="m">${k}</td><td class="r">${hl ? `<span class="hl">${v}</span>` : v}</td></tr>`
+  ).join("");
+}
+
+function paintApis(S) {
+  $("apis").innerHTML = S.apis.map(([a, b]) =>
+    `<tr><td class="m" style="white-space:nowrap;color:var(--accent)">${a}</td>
+         <td style="font-size:.83rem;color:var(--ink-2)">${b}</td></tr>`
+  ).join("");
+}
+
+function paintSpec(S) {
+  $("specTitle").textContent = `Specification — ${S.kind.toLowerCase()}`;
+  $("spec").innerHTML = `
+    <div class="box" style="border-left:3px solid var(--fn)">
+      <div class="chiprow"><span class="chip k-fn">Functional</span></div>
+      <ul>${S.spec.fn.map(x => `<li>${x}</li>`).join("")}</ul>
+    </div>
+    <div class="box" style="border-left:3px solid var(--tech)">
+      <div class="chiprow"><span class="chip k-tech">Technical</span></div>
+      <ul>${S.spec.tech.map(x => `<li>${x}</li>`).join("")}</ul>
+    </div>`;
+}
+
+/* ---- cost arithmetic (transparent, editable) ---- */
+function costOf(m) {
+  const inTok = m.imgTok * m.imgs + m.promptTok;
+  let c = (inTok / 1e6) * m.inRate + (m.outTok / 1e6) * m.outRate;
+  if (m.toolCalls) c *= m.toolCalls;      // each tool turn re-sends context
+  if (m.batch) c *= 0.5;                  // batch API discount
+  return { inTok, outTok: m.outTok, cost: c };
+}
+
+/* =========================================================
+   5. Run the analysis
+   ========================================================= */
+let busy = false;
+
+async function run() {
+  if (busy) return;
+  busy = true;
+  const S = SCENES[state.scene];
+  const btn = $("run");
+  btn.disabled = true; btn.textContent = "Analysing…";
+  $("viewer").classList.add("scanning");
+  const t0 = performance.now();
+
+  const states = {}, timings = {};
+  const step = (id, st, rt) => { states[id] = st; if (rt) timings[id] = rt; paintPipe(states, timings); };
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+  // stage 1 — fetch
+  step("fetch", "run"); await wait(260);
+  step("fetch", "done", `${S.model.imgs} frame${S.model.imgs > 1 ? "s" : ""}`);
+
+  // stage 2 — the real CV
+  step("filter", "run"); await wait(300);
+  const bd = ctxBase.getImageData(0, 0, S.W, S.H).data;
+  const cd = ctxCur.getImageData(0, 0, S.W, S.H).data;
+  const tCv = performance.now();
+  const cv = detectChange(bd, cd, S.W, S.H, S.cv);
+  if (S.cv.roi) cv.roi = detectRoi(bd, cd, S.W, S.H, S.cv.roi, S.cv.threshold);
+  if (S.cv.darkThr) {
+    const sc = { scalePx: S.W * 0.1875, scaleMm: 50 };
+    cv.crack     = measureCrack(cd, S.W, S.H, S.cv.darkThr, sc.scalePx, sc.scaleMm, S.W * S.cv.searchFrac);
+    cv.crackBase = measureCrack(bd, S.W, S.H, S.cv.darkThr, sc.scalePx, sc.scaleMm, S.W * S.cv.searchFrac);
+    cv.growthMm  = cv.crack.widthMm - cv.crackBase.widthMm;
+    cv.growthBr  = cv.crack.branches - cv.crackBase.branches;
+  }
+  const cvMs = performance.now() - tCv;
+  state.result = cv;
+  paintOverlay();
+  step("filter", "done", `${cvMs.toFixed(1)} ms`);
+
+  const anything = cv.regionsKept > 0 || cv.roi || cv.crack;
+
+  // stage 3 — triage
+  let spend = 0, usedModel = S.model.name;
+  if (!anything) {
+    step("triage", "skip", "no change — skipped");
+    step("adj", "skip", "skipped");
+  } else {
+    step("triage", "run"); await wait(420);
+    const c1 = costOf(S.model);
+    spend += c1.cost;
+    step("triage", "done", `${c1.inTok.toLocaleString()} tok · $${c1.cost.toFixed(4)}`);
+  }
+
+  // stage 4 — adjudicate
+  const v0 = S.verdict(cv);
+  const needsEsc = anything && S.escalate && v0.conf < 0.75;
+  if (anything) {
+    if (needsEsc) {
+      step("adj", "run"); await wait(420);
+      const c2 = costOf(S.escalate);
+      spend += c2.cost; usedModel = S.escalate.name;
+      step("adj", "done", `${c2.inTok.toLocaleString()} tok · $${c2.cost.toFixed(4)}`);
+    } else {
+      step("adj", "skip", S.escalate ? "confidence ≥ 0.75" : "n/a for this scene");
+    }
+  }
+
+  // stage 5 — land
+  step("land", "run"); await wait(230);
+  step("land", "done", "1 row written");
+
+  $("viewer").classList.remove("scanning");
+  const total = performance.now() - t0;
+
+  const v = S.verdict(cv);
+  state.verdict = v;
+  state.spend += spend;
+
+  paintFinding(v, spend, usedModel, S);
+  paintTechnical(cv, v, S, { cvMs, total, spend, usedModel, needsEsc, anything });
+  updateStrip();
+
+  btn.disabled = false; btn.textContent = "Re-run analysis";
+  busy = false;
+}
+
+/* ---- functional output ---- */
+function paintFinding(v, spend, model, S) {
+  const sevChip = { crit: "k-crit", warn: "k-warn", good: "k-good" }[v.sev];
+  const sevWord = { crit: "Critical", warn: "High", good: "No action" }[v.sev];
+  const labelled = state.labels[state.scene];
+
+  $("fnOut").innerHTML = `
+    <div class="finding ${v.sev}">
+      <div class="ttl">
+        <span class="t">${v.title}</span>
+        <span class="chip ${sevChip}">${sevWord}</span>
+        ${labelled ? `<span class="chip k-flat">labelled: ${labelled}</span>` : ""}
+      </div>
+      <p class="cap">${v.caption}</p>
+      <div class="conf">
+        <span class="bar"><i style="width:${(v.conf * 100).toFixed(0)}%"></i></span>
+        <span class="pc">${v.conf.toFixed(2)} confidence</span>
+      </div>
+      ${S.sensors.length ? `<div style="display:flex;flex-direction:column;gap:6px;padding-top:3px">
+        ${S.sensors.map(s => `<div class="spark">
+          <svg width="112" height="26" viewBox="0 0 112 30" aria-hidden="true">
+            <polyline points="${s.pts}" fill="none" stroke="${s.col}" stroke-width="2"/></svg>
+          <div><div class="lbl">${s.lbl}</div><div class="val">${s.val}</div></div></div>`).join("")}
+      </div>` : ""}
+      <p class="tiny" style="border-top:1px solid var(--rule);padding-top:8px">${S.pms}</p>
+      <div class="acts">
+        <button class="btn ok"  data-label="confirm">Confirm</button>
+        <button class="btn no"  data-label="reject">Reject</button>
+        <button class="btn"     data-label="unsure">Unsure</button>
+        <button class="btn run" data-act="task">Create task</button>
+      </div>
+      <p class="tiny">Recommended action <code>${v.action}</code> · ${model} · $${spend.toFixed(4)} this run</p>
+    </div>`;
+
+  $("fnOut").querySelectorAll("[data-label]").forEach(b =>
+    b.addEventListener("click", () => {
+      state.labels[state.scene] = b.dataset.label;
+      updateStrip();
+      paintFinding(v, spend, model, S);
+    }));
+  const tb = $("fnOut").querySelector('[data-act="task"]');
+  if (tb) tb.addEventListener("click", () => {
+    tb.textContent = "Task created ✓"; tb.disabled = true;
+  });
+}
+
+/* ---- technical output ---- */
+function paintTechnical(cv, v, S, t) {
+  const rows = [
+    ["algorithm", S.algo],
+    ["frame size", `${S.W} × ${S.H} px`],
+    ["luminance threshold", `${S.cv.threshold} / 255`, true],
+    ["pixels over threshold", `${cv.changedPx.toLocaleString()} (${cv.changedPct.toFixed(2)}%)`],
+    ["grid", `${cv.grid.gw} × ${cv.grid.gh} @ ${cv.grid.cell} px`],
+    ["cells triggered", `${cv.grid.cellsOn} / ${cv.grid.frameCells}`],
+    ["regions found", String(cv.regionsFound)],
+    ["rejected as noise", `${cv.rejectedAsNoise} (< ${S.cv.minCells} cells)`, cv.rejectedAsNoise > 0],
+    ["regions kept", String(cv.regionsKept), true],
+    ["frame coverage", `${cv.coveragePct.toFixed(2)}%`]
+  ];
+  if (cv.regions[0]) {
+    const r = cv.regions[0];
+    rows.push(["largest bbox", `x${r.x} y${r.y} ${r.w}×${r.h}`, true]);
+    rows.push(["largest area", `${r.cells} cells`]);
+  }
+  if (cv.roi) {
+    rows.push(["roi", `x${S.cv.roi.x} y${S.cv.roi.y} ${S.cv.roi.w}×${S.cv.roi.h}`]);
+    rows.push(["roi pixels differing", `${cv.roi.changed} / ${cv.roi.total} (${cv.roi.pct.toFixed(1)}%)`, true]);
+    rows.push(["verdict threshold", "12% of ROI"]);
+  }
+  if (cv.crack) {
+    const m = cv.crack;
+    rows.push(["dark-pixel threshold", `${S.cv.darkThr} / 255`]);
+    rows.push(["dark pixels", m.darkPx.toLocaleString()]);
+    rows.push(["scale calibration", `${m.mmPerPx.toFixed(4)} mm/px`, true]);
+    rows.push(["single-segment rows", `${m.singleSegRows} usable of ${S.H}`]);
+    rows.push(["raw max run (rejected)", `${m.rawMaxPx} px → ${m.rawMaxMm.toFixed(2)} mm`]);
+    rows.push(["p90 width (used)", `${m.widthPx} px → ${m.widthMm.toFixed(2)} mm`, true]);
+    if (cv.crackBase) {
+      rows.push(["baseline width", `${cv.crackBase.widthPx} px → ${cv.crackBase.widthMm.toFixed(2)} mm`]);
+      rows.push(["measured growth", `${cv.growthMm > 0 ? "+" : ""}${cv.growthMm.toFixed(2)} mm · ${cv.growthBr > 0 ? "+" : ""}${cv.growthBr} branches`, true]);
+    }
+    rows.push(["crack rows (length)", `${m.lengthPx} px → ${m.lengthMm.toFixed(0)} mm`]);
+    rows.push(["multi-segment rows", `${m.branchRows} → ${m.branches} branches`]);
+  }
+  rows.push(["cv wall time", `${t.cvMs.toFixed(1)} ms`]);
+  rows.push(["pipeline wall time", `${t.total.toFixed(0)} ms`]);
+  paintMetrics(rows);
+
+  const esc = t.needsEsc ? S.escalate.name : null;
+  const j = [
+    `{`,
+    `  <span class="jk">"finding_type"</span>:  <span class="js">"${v.type}"</span>,`,
+    `  <span class="jk">"severity"</span>:      <span class="js">"${v.sev === "crit" ? "critical" : v.sev === "warn" ? "high" : "none"}"</span>,`,
+    `  <span class="jk">"confidence"</span>:    <span class="jn">${v.conf.toFixed(2)}</span>,`,
+    cv.regions[0]
+      ? `  <span class="jk">"bbox"</span>:          [<span class="jn">${cv.regions[0].x}</span>, <span class="jn">${cv.regions[0].y}</span>, <span class="jn">${cv.regions[0].w}</span>, <span class="jn">${cv.regions[0].h}</span>],`
+      : `  <span class="jk">"bbox"</span>:          <span class="jc">null</span>,`,
+    cv.crack ? `  <span class="jk">"width_mm"</span>:      <span class="jn">${cv.crack.widthMm.toFixed(2)}</span>,` : null,
+    cv.roi ? `  <span class="jk">"roi_diff_pct"</span>:  <span class="jn">${cv.roi.pct.toFixed(1)}</span>,` : null,
+    `  <span class="jk">"changed_vs_baseline"</span>: <span class="jn">${cv.regionsKept > 0}</span>,`,
+    `  <span class="jk">"rationale"</span>:     <span class="js">"${v.caption.replace(/"/g, "'").slice(0, 96)}…"</span>,`,
+    `  <span class="jk">"recommended_action"</span>: <span class="js">"${v.action}"</span>,`,
+    `  <span class="jk">"model"</span>:         <span class="js">"${t.usedModel}"</span>${esc ? "," : ""}`,
+    esc ? `  <span class="jk">"escalated_from"</span>: <span class="js">"${S.model.name}"</span>` : null,
+    `}`,
+    ``,
+    `<span class="jc">// geometry + measurements above are computed;</span>`,
+    `<span class="jc">// "rationale" is templated in this prototype.</span>`
+  ].filter(Boolean).join("\n");
+  $("json").innerHTML = j;
+
+  const c1 = costOf(S.model);
+  const c2 = t.needsEsc ? costOf(S.escalate) : null;
+  $("techExtra").innerHTML = `
+    <h4 style="margin-bottom:7px">Cost arithmetic <span class="chip k-warn">estimated</span></h4>
+    <div class="tw"><table>
+      <thead><tr><th>Stage</th><th>Model</th><th style="text-align:right">In tok</th><th style="text-align:right">Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Diff &amp; threshold</td><td class="m">local</td><td class="r">0</td><td class="r">$0.0000</td></tr>
+        <tr><td>Triage</td><td class="m">${S.model.name}${S.model.batch ? " (batch)" : ""}</td>
+            <td class="r">${t.anything ? c1.inTok.toLocaleString() : "—"}</td>
+            <td class="r">${t.anything ? "$" + c1.cost.toFixed(4) : "$0.0000"}</td></tr>
+        <tr><td>Adjudicate</td><td class="m">${c2 ? S.escalate.name : "—"}</td>
+            <td class="r">${c2 ? c2.inTok.toLocaleString() : "—"}</td>
+            <td class="r">${c2 ? "$" + c2.cost.toFixed(4) : "$0.0000"}</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="3" style="font-weight:650">This run</td>
+        <td class="r" style="font-weight:650;color:var(--accent)">$${t.spend.toFixed(4)}</td></tr></tfoot>
+    </table></div>
+    <p class="tiny" style="margin-top:8px">
+      in&nbsp;tok = image&nbsp;tokens × images + prompt. Image tokens use the model's documented tier
+      (${S.model.imgTok.toLocaleString()} standard, 4,784 high-res). Rates $${S.model.inRate}/$${S.model.outRate} per MTok.
+      ${S.model.batch ? "Batch API halves it. " : ""}${S.model.toolCalls ? `Multiplied by ${S.model.toolCalls} tool turns. ` : ""}
+      Edit <code>costOf()</code> to change the model.
+    </p>`;
+}
+
+function updateStrip() {
+  const keys = Object.keys(SCENES);
+  const lab = keys.map(k => state.labels[k]).filter(Boolean);
+  const conf = lab.filter(x => x === "confirm").length;
+  const rej  = lab.filter(x => x === "reject").length;
+  const uns  = lab.filter(x => x === "unsure").length;
+  $("mPending").textContent  = keys.length - lab.length;
+  $("mLabelled").textContent = lab.length;
+  $("mConf").textContent     = conf;
+  $("mRej").textContent      = rej;
+  const denom = conf + rej;              // unsure excluded from precision, deliberately
+  $("mPrec").textContent = denom ? Math.round((conf / denom) * 100) + "%" : "—";
+  $("mPrec").className = "v " + (denom ? (conf / denom >= 0.85 ? "ok" : "bad") : "");
+  $("mSpend").textContent = "$" + state.spend.toFixed(4);
+  $("mSpend").title = uns ? `${uns} unsure excluded from precision` : "";
+}
+
+/* =========================================================
+   6. Wiring
+   ========================================================= */
+$("run").addEventListener("click", run);
+
+$("blend").addEventListener("input", (e) => { state.blend = +e.target.value; applyBlend(); });
+
+function setOverlay(mode) {
+  state.overlay = mode;
+  [["ovBox","box"],["ovHeat","heat"],["ovOff","off"]].forEach(([id, m]) =>
+    $(id).setAttribute("aria-pressed", String(m === mode)));
+  paintOverlay();
+}
+$("ovBox").addEventListener("click",  () => setOverlay("box"));
+$("ovHeat").addEventListener("click", () => setOverlay("heat"));
+$("ovOff").addEventListener("click",  () => setOverlay("off"));
+
+function setView(v) {
+  state.view = v;
+  $("paneFn").hidden   = v === "tech";
+  $("paneTech").hidden = v === "fn";
+  $("stage").classList.toggle("both", v === "both");
+  [["vBoth","both"],["vFn","fn"],["vTech","tech"]].forEach(([id, m]) =>
+    $(id).setAttribute("aria-pressed", String(m === v)));
+}
+$("vBoth").addEventListener("click", () => setView("both"));
+$("vFn").addEventListener("click",   () => setView("fn"));
+$("vTech").addEventListener("click", () => setView("tech"));
+
+document.querySelectorAll(".scene-tab").forEach(b =>
+  b.addEventListener("click", () => {
+    if (busy) return;
+    state.scene = b.dataset.scene;
+    document.querySelectorAll(".scene-tab").forEach(o =>
+      o.setAttribute("aria-pressed", String(o === b)));
+    state.result = null; state.verdict = null;
+    $("fnOut").innerHTML = `<div class="empty">No finding yet — run the analysis.</div>`;
+    $("json").textContent = "// awaiting run";
+    $("techExtra").innerHTML = "";
+    paintMetrics([["—", "run the analysis to populate"]]);
+    paintPipe({}, {});
+    $("run").textContent = "Run vision analysis";
+    $("blend").value = 100; state.blend = 100;
+    renderScene();
+  }));
+
+$("reset").addEventListener("click", () => {
+  state.labels = {}; state.spend = 0;
+  updateStrip();
+  if (state.verdict) {
+    const S = SCENES[state.scene];
+    paintFinding(state.verdict, 0, S.model.name, S);
+  }
+});
+
+renderScene();
+updateStrip();
+</script>
+</body>
+</html>
